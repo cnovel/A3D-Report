@@ -116,9 +116,9 @@ Je voudrais remercier mon superviseur Renaud Keriven, qui a su dirigé mes effor
 \addcontentsline{toc}{section}{Introduction}
 La création de modèles tridimensionnels de villes à partir de données photographiques et/ou de relevés lasers de manière automatique est en plein essor. De nombreux acteurs, tels Google, Apple ou Microsoft, proposent de visualiser des villes et des bâtiments en trois dimensions avec leur logiciels de cartographie respectifs. Les problèmatiques soulevées sont nombreuses et le problème initial consistant à obtenir un modèle précis et détaillé a été longuement étudié et de nombreuses techniques permettent d'obtenir des résultats satisfaisant.
 
-De nos jours, la diffusion de ces modèles se fait via Internet. Il est alors crucial de réduire le poids du modèle créé, tout en maintenant un niveau de détail suffisant. Il est nécessaire de simplifier intelligemment le modèle, en prenant en compte la géométrie et la topologie de la reconstruction. On parle alors de sémantisation du modèle. Avant de repérer des structures complexes, comme les types de bâtiments ou les détails architecturaux, la première étape consiste à identifier des primitives géométriques -- plans, cylindres, quadriques -- pour simplifier le modèle. Si des travaux existent à ce sujet, ils ne prennent pas en compte les spécificités des modèles 3D de villes, comme le manque de précision et le bruit ainsi que la variation de l'échantillonage au sein du modèle.
+De nos jours, la diffusion de ces modèles se fait via Internet, voire même via les réseaux mobiles sur smartphones et tablettes. La vitesse de connexion peut fortement varier selon les cas d'utilisation. Il est alors crucial de réduire le poids du modèle créé tout en maintenant un niveau de détail suffisant, afin de permettre un téléchargement plus rapide du modèle. Il est nécessaire de simplifier intelligemment le modèle, en prenant en compte la géométrie et la topologie de la reconstruction. On parle alors de sémantisation du modèle. Avant de repérer des structures complexes, comme les types de bâtiments ou les détails architecturaux, la première étape consiste à identifier des primitives géométriques -- plans, cylindres, quadriques -- pour simplifier le modèle. Si des travaux existent à ce sujet, ils ne prennent pas en compte les spécificités des modèles 3D de villes, comme le manque de précision et le bruit ainsi que la variation de l'échantillonage au sein du modèle. La détection de plans va permettre réduire le poids du modèle.
 
-Le but du stage est de créer et développer un algorithme permettant d'identifier des plans au sein de modèles 3D variés -- villes, bâtiments -- et de simplifier le modèle en accordance avec les plans détectés.
+L'objectif de ce stage est de développer un algorithme capable de détecter des plans dans un modèle 3D. Cette détection doit pouvoir s'adapter de manière automatique au modèle traité, que ce soit au niveau du bruit, de la précision ou de l'échelle. Il est aussi nécessaire que cette détection puisse être paramétrée, c'est à dire que l'utilisateur puisse définir une tolérance d'erreur pour les plans. L'algorithme doit ensuite créer les plans tout en conservant la topologie du modèle. Une étape de simplification est ensuite nécessaire pour réduire la taille du modèle obtenu. Cette étape de simplification doit prendre en compte la présence des plans afin de ne pas déformer ces derniers.
 \newpage
 
 \section{Détection de plans}
@@ -141,8 +141,97 @@ Afin de raccourcir le temps d'exécution, il est possible de segmenter le nuage 
 À partir de ces éléments, \textit{RANSAC} n'est pas adapté pour notre problématique.
 
 \subsection{Transformée de Hough}
+La transformée de Hough est une méthode qui permet de détecter des objets paramétrés, des plans dans notre cas. L’idée est de transformer un point p de l’espace euclidien 3D en une courbe dans l’espace de Hough. Cette courbe représente l’infinité des plans passant par $p$. D’un point $p = (p_x; p_y; p_z)$, on donne l’équation d’un plan passant par $p$ selon trois variables qui sont la distance à l’origine $\rho$, l’angle $\theta$ de la normale du plan sur le plan $xy$ et l’angle $\phi$ entre le plan $xy$ et la composante selon $z$ de la normale -- Fig \ref{Hough1}. L’équation suivante régit la relation entre $p$ et ($\rho, \theta, \phi$) :
+$$p_x*cos\theta * sin\phi + p_y*sin\theta*sin\phi + p_z*cos\phi = \rho$$
+Dans l'espace de Hough, chaque triplet ($\rho, \theta, \phi$) décrit un unique plan de $\mathbb{R}^3$.
+
+Afin de trouver les plans d’un nuage de points, on calcule la transformée de Hough pour chaque point $p$, c’est à dire l’ensemble des triplets ($\rho, \theta, \phi$) vérifiant l’équation ci-dessus. L’ensemble de ces points forme une sinusoïde dans l’espace de Hough. On trouve les plans lorsque 3 courbes ou plus s’intersectent au même triplet dans l’espace de Hough -- Fig . Ainsi, pour un nuage de points donné, plus il y a de courbes qui s’intersectent au même point ($\rho, \theta, \phi$), plus la probabilité que le plan associé soit un plan recherché est forte.
+
+Dans \cite{Hough1}, plusieurs méthodes sont décrites pour effectuer cette recherche de plans. Nous ne détaillons ici que la méthode la plus basique, appelée \textit{Transformée de Hough Standard} ou \textit{Standard Hough Transform} en anglais. Dans cette méthode, l'espace de Hough est discrétisé en différentes cellules. Chaque cellule contient un score. Pour chaque point $p$ du nuage de points, on incrémente les cellules touchées par la transformée de Hough associée, c'est à dire les cellules où la courbe passe effectivement. Après traitement du nuage de points en entier, les cellules avec les scores les plus grands représentent les plans du nuage de points.
+
+Selon la taille choisie pour les cellules et le bruit présent dans le nuage de points, un mécanisme de cellule cubique volante peut être mis en place pour rechercher les meilleurs plans. Ces derniers correspondent au centre de la cellule volante lorsque le score dépasse un certain seuil $T$.
+
+La Transformée de Hough Standard est un algorithme lent. La complexité de l'incrémentation est $O(n*N_{\theta}*N_{\phi})$ où $n$ est le nombre de points, $N_{\theta}$ le nombre de cellules selon $\theta$ et $N_{\phi}$ le nombre de cellules selon $\phi$. Dans \cite{Hough1}, un nuage de 60000 points est traité en 6 minutes. Pour un modèle de villes de l'ordre de 2 millions de points, le temps de traitement passe à plus de 3 heures. D'autres méthodes sont plus rapides, mais deviennent inexactes.
+
+Au lieu d'utiliser les points, il est possible dans notre cas d'utiliser les facettes du maillage. En effet chaque facette $f$ correspond à un plan. $f$ peut être projeter dans l'espace de Hough en trouvant directement ses coordonnées ($\rho, \theta, \phi$). Ainsi, au lieu de créer une courbe et de tester l'intersection avec l'ensemble des cellules possibles, il est désormais possible de voter directement pour la cellule correspondante. Cela réduit largement la complexité de l'algorithme de vote : la compléxité devient $O(N_f)$ où $N_f$ est le nombre de facettes dans le maillage. Sachant que dans les modèles que nous traitons, nous constatons empiriquement que $N_f ~ 2n$, la complexité de cette méthode est effectivement plus faible que celle de la Transformée de Hough Standard.
+
+Peu importe la variante de la transformée de Hough utilisée, il est nécessaire de discrétiser l'espace de Hough. Cette discrétisation, ou design de l'accumulateur, est importante. En effet, un mauvais accumulateur peut entraîner certains problèmes :
+\begin{itemize}
+  \item échec dans la détection des plans ;
+  \item lenteur ;
+  \item mauvaise précision ;
+  \item taille des données importantes.
+\end{itemize}
+La principale difficulté dans le design de l'accumulateur se trouve dans la discrétisation des angles $\theta$ et $\phi$, afin d'obtenir des zones de tailles égales sur la sphère unité. Dans la suite, nous allons présenter les différentes discrétisations possibles, en détaillant les trois accumulateurs les plus classiques décrits dans \cite{Hough2}.
+
+\paragraph{Tableau}
+L’accumulateur de type Tableau est simple à définir. Deux pas sont choisis pour chaque variable -- $\Delta_{\theta}$ et $\Delta_{\phi}$, et les cellules sont définies selon ces pas. Une telle discrétisation possède un désavantage certain. La taille des cellules n’est pas constante et peut fortement varier d’une cellule à l’autre.
+
+On constate que le score des cellules équatoriales sera plus élevé que celui des cellules polaires, la détection des plans sera donc faussée. Il est d’une part difficile de choisir un bon seuil de détection, et des plans différents risquent de voter pour la même cellule. L’approche Tableau est trop simpliste pour être satisfaisante.
+
+\paragraph{Cube}
+L’accumulateur de type Cube cherche à compenser ce problème de taille des cellules, tout en restant simple à implémenter. L’idée est qu’une correspondance entre les cellules de l’accumulateur et et des petits patchs sur la sphère unité doit exister. La solution est de projeter la sphère unité sur le plus petit cube aligné sur la base contenant la sphère à l’aide du difféomorphisme
+$$\varphi \text{: } S^2 \rightarrow cube$$
+$$s \mapsto s/\lVert s\rVert_{\infty}$$
+Chaque face du cube est ensuite divisée en une grille régulière. Étant donné la normale $n$ d’un plan, on retrouve la cellule dont le score doit être augmenté de la façon suivante. Le côté $a_i$ du cube est déterminé par la direction dominante $n_d$. La projection sur ce cube se fait en multipliant $n$ par $n_d$. Les coordonnées non dominantes deviennent alors $c_x =
+\dfrac{n_1}{n_d}$ et $c_y = \dfrac{n_2}{n_d}$ -- $n_1$ et $n_2$ représentent les deux directions non dominantes de $n$. On calcule alors les coordonnées de la cellule comme suit :
+
+\begin{equation*}
+  a_x = 
+     \begin{cases}
+        1 & \text{si $\dfrac{c_x + 1}{2} = 1$} \\
+        1 + nr_cells*\dfrac{c_x + 1}{2} & \text{sinon}
+     \end{cases}
+\end{equation*}
+
+\begin{equation*}
+  a_y = 
+     \begin{cases}
+        1 & \text{si $\dfrac{c_y + 1}{2} = 1$} \\
+        1 + nr_cells*\dfrac{c_y + 1}{2} & \text{sinon}
+     \end{cases}
+\end{equation*}
+
+La relation entre l’accumulateur et $S$ est donc simple. La Fig 1.4 montre que les patchs sur la sphère sont plus réguliers que pour l’accumulateur Tableau. L’accumulateur Cube est aussi invariant par une rotation de 90 degrés autour des axes du repère. Cependant, les cellules sont quand même plus petites sur les arêtes du cube qu’au centre des faces. L’accumulateur aura donc plus de mal à détecter un plan si sa normale pointe en direction d’un coin de l’accumulateur Cube. Par ailleurs, l’accumulateur est aussi sensible aux rotations d’angle de moins de 90 degrés.
+
+\paragraph{Balle}
+L’accumulateur de type Balle cherche à discrétiser l’espace de Hough en cellules de taille égale, afin de pallier aux problèmes évoqués. Pour cela, la résolution des patchs doit être différente selon la position sur la sphère unité. La résolution selon $\phi$ est semblable à celle de l’accumulateur Tableau, c’est à dire à pas constant $\Delta_{\phi}$. Selon l’angle $\phi$, l’angle $\theta$ va évoluer de manière à ce que les cellules gardent une taille constante. Le cercle de diamètre le plus grand est situé à l’équateur -- soit $\phi = 0$. Pour la sphère unité, son périmètre est $max_l = 2\pi$. Pour le cercle situé à l’angle $\phi$, la longueur est $l_i = 2\pi \phi$. Ainsi
+$$\Delta_{\theta} = \dfrac{360*max_l}{l_i*N_{\theta}}$$
+où $N_{\theta}$ est la résolution souhaitée. L’accumulateur obtenu est bien constitué de cellules de taille égale. Par contre, l’invariance par rotation de 90 degrés n’est pas conservée. Ce problème peut être contourné en choisissant une résolution fine pour la phase de vote et une détection avec une cellule volante.
+
+Notre objectif est de traiter des maillages très grands -- 2 millions de points et 4 millions de facettes. Il est donc nécessaire que l'accumulateur soit assez détaillé pour ne pas confondre plusieurs plans.
+
+XXX
 
 \subsection{Croissance de région}
+La croissance de région -- \textit{region growing} en anglais – est une approche gloutonne de la détection de plan. L’idée de base est de partir d’un point graine et d’ajouter tous ces proches voisins, tant que ces voisins respectent l’équation du plan initial. Une méthode basique est présentée dans \cite{reggrow1}. On choisit 3 points du nuage de points qui se trouvent dans une sphère de rayon $r$. Ces trois plans initialisent le plan optimal $\Pi$ et le set de points $S$. Ensuite, on cherche le point $p$ tel que
+\begin{itemize}
+  \item $p$ est le plus proche voison de $S$ ;
+  \item $\text{dist}(S,p) < \delta$ ;
+  \item $\text{dist}(S,p) < \gamma$ ;
+  \item l'erreur entre $S\cup\{p\}$ et $\Pi$ est inférieure à $\epsilon$.
+\end{itemize}
+
+L'expansion de la région s'arrête lorsqu'il n'est plus possible de trouver de nouveaux points à insérer. On vérifie alors que $\vert S\vert < \Theta$, c'est à dire que la région est suffisamment grande pour être jugée intéressante. Ensuite, les points sont retirés du nuage de points initial et une nouvelle phase de croissance de plan commence. Le plan optimal est obtenu grâce à la méthode détaillée en annexe.
+
+La principale difficulté de la croissance de région est de sélectionner correctement les trois points de départ. En effet, il serait intéressant d'écarter mes zones ne correspondant pas à des plans. Sur ce type de zones, l'algorithme va lancer plusieurs fois la croissance de région, pour des régions qui seront très petites. Du temps peut être gagné en affinant la sélection des trois premiers points.
+
+\cite{reggrow2} propose une technique pour choisir de manière plus efficace le point de départ de la croissance de région. On cherche un point de départ $p_s$ qui vérifie les deux critères suivants :
+\begin{itemize}
+  \item $p_s$ a au moins 6 voisins, c'est à dire la sphère de centre $p_s$ et de rayon $\delta$ contien au moins 6 points ;
+  \item le voisinage de $p_s$ est localement plan, c'est à dire que les points contenus dans la sphère précédente forme un plan.
+\end{itemize}
+Le premier critère assure que la région est suffisamment peuplée, et qu’une recherche dans ce voisinage est intéressante. Le second critère assure un semblant de plan. Il évite de débuter une séquence de croissance alors qu’il n’y a que peu de chance que la région considérée soit un plan. On estime la planarité du voisinage de la même manière que précédemment.
+
+Une autre méthode est décrite dans \cite{reggrow3} pour trouver des plans via croissance de régions. Il s'agit dans un premier temps de calculer la normale de chaque point ainsi que la courbure à chaque point. Ces deux variables sont obtenues via une \textit{Principal Components Analysis} décrite en annexe. Les points sont ensuite filtrés selon leur courbure $\gamma$ : si $\gamma < S_c$, alors le point est considéré comme graine. Les graines sont classées par ordre croissant de courbure. Ensuite les graines sont répartis sur la sphère unité selon leur normale. Une étape de clustering est ensuite appliquée :
+\begin{itemize}
+  \item La graine avec la courbure la plus faible $g$ est choisie et le cluster $C$ est initialisé avec $g$ ;
+  \item On ajoute au cluster $C$ les points $p$ tel que $n_p\cdot n_g \approx 1$ et tel que $\text{max}\{n_p\cdot(p-g), n_g\cdot(p-g)\}$ est proche de 0 -- c'est-à-dire $p-q$ orthogonal à la normal du plan ;
+  \item Une fois qu'on ne peut plus ajouter de points, si $\vert C\vert > T$ un seuil alors le cluster est validé et les points sont retirés du nuage de points. Sinon $g$ est retiré de la liste des graines.
+\end{itemize}
+Cet algorithme est répété jusqu'à ce que la liste des graines soit vide. La particularité de cette croissance de région est qu'elle s'opére sur la sphère unité et non pas sur le nuage de points.
+
+Notre méthode propose un mélange dans les techniques de croissance de régions. Nous commençons par évaluer la courbure de chaque facette via la méthode de \cite{reggrow3}. Grâce au maillage, le voisinage de la facette s'obtient facilement. Il suffit de prendre les $n$ premières couronnes autour de la facette -- Fig \ref{r}.
 
 \subsection{Implémentation}
 
