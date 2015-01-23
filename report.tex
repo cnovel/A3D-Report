@@ -141,11 +141,23 @@ Afin de raccourcir le temps d'exécution, il est possible de segmenter le nuage 
 À partir de ces éléments, \textit{RANSAC} n'est pas adapté pour notre problématique.
 
 \subsection{Transformée de Hough}
-La transformée de Hough est une méthode qui permet de détecter des objets paramétrés, des plans dans notre cas. L’idée est de transformer un point p de l’espace euclidien 3D en une courbe dans l’espace de Hough. Cette courbe représente l’infinité des plans passant par $p$. D’un point $p = (p_x; p_y; p_z)$, on donne l’équation d’un plan passant par $p$ selon trois variables qui sont la distance à l’origine $\rho$, l’angle $\theta$ de la normale du plan sur le plan $xy$ et l’angle $\phi$ entre le plan $xy$ et la composante selon $z$ de la normale -- Fig \ref{Hough1}. L’équation suivante régit la relation entre $p$ et ($\rho, \theta, \phi$) :
+La transformée de Hough est une méthode qui permet de détecter des objets paramétrés, des plans dans notre cas. L’idée est de transformer un point p de l’espace euclidien 3D en une courbe dans l’espace de Hough. Cette courbe représente l’infinité des plans passant par $p$. D’un point $p = (p_x; p_y; p_z)$, on donne l’équation d’un plan passant par $p$ selon trois variables qui sont la distance à l’origine $\rho$, l’angle $\theta$ de la normale du plan sur le plan $xy$ et l’angle $\phi$ entre le plan $xy$ et la composante selon $z$ de la normale -- Fig~\ref{fig:Hough1}. L’équation suivante régit la relation entre $p$ et ($\rho, \theta, \phi$) :
 $$p_x*cos\theta * sin\phi + p_y*sin\theta*sin\phi + p_z*cos\phi = \rho$$
 Dans l'espace de Hough, chaque triplet ($\rho, \theta, \phi$) décrit un unique plan de $\mathbb{R}^3$.
 
-Afin de trouver les plans d’un nuage de points, on calcule la transformée de Hough pour chaque point $p$, c’est à dire l’ensemble des triplets ($\rho, \theta, \phi$) vérifiant l’équation ci-dessus. L’ensemble de ces points forme une sinusoïde dans l’espace de Hough. On trouve les plans lorsque 3 courbes ou plus s’intersectent au même triplet dans l’espace de Hough -- Fig . Ainsi, pour un nuage de points donné, plus il y a de courbes qui s’intersectent au même point ($\rho, \theta, \phi$), plus la probabilité que le plan associé soit un plan recherché est forte.
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.5]{HoughCoord.png}
+\caption{\label{fig:Hough1} Coordonnées ($\rho, \theta, \phi$)}
+\end{figure}
+
+Afin de trouver les plans d’un nuage de points, on calcule la transformée de Hough pour chaque point $p$, c’est à dire l’ensemble des triplets ($\rho, \theta, \phi$) vérifiant l’équation ci-dessus. L’ensemble de ces points forme une sinusoïde dans l’espace de Hough. On trouve les plans lorsque 3 courbes ou plus s’intersectent au même triplet dans l’espace de Hough -- Fig~\ref{fig:Hough2}. Ainsi, pour un nuage de points donné, plus il y a de courbes qui s’intersectent au même point ($\rho, \theta, \phi$), plus la probabilité que le plan associé soit un plan recherché est forte.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.5]{HoughCurv1.png}~\includegraphics[scale=0.5]{HoughCurv0.png}
+\caption{\label{fig:Hough2} À gauche, la courbe formée par un point de l’espace XYZ. À droite, l’intersection de trois courbes définit un plan.}
+\end{figure}
 
 Dans \cite{Hough1}, plusieurs méthodes sont décrites pour effectuer cette recherche de plans. Nous ne détaillons ici que la méthode la plus basique, appelée \textit{Transformée de Hough Standard} ou \textit{Standard Hough Transform} en anglais. Dans cette méthode, l'espace de Hough est discrétisé en différentes cellules. Chaque cellule contient un score. Pour chaque point $p$ du nuage de points, on incrémente les cellules touchées par la transformée de Hough associée, c'est à dire les cellules où la courbe passe effectivement. Après traitement du nuage de points en entier, les cellules avec les scores les plus grands représentent les plans du nuage de points.
 
@@ -165,12 +177,18 @@ Peu importe la variante de la transformée de Hough utilisée, il est nécessair
 La principale difficulté dans le design de l'accumulateur se trouve dans la discrétisation des angles $\theta$ et $\phi$, afin d'obtenir des zones de tailles égales sur la sphère unité. Dans la suite, nous allons présenter les différentes discrétisations possibles, en détaillant les trois accumulateurs les plus classiques décrits dans \cite{Hough2}.
 
 \paragraph{Tableau}
-L’accumulateur de type Tableau est simple à définir. Deux pas sont choisis pour chaque variable -- $\Delta_{\theta}$ et $\Delta_{\phi}$, et les cellules sont définies selon ces pas. Une telle discrétisation possède un désavantage certain. La taille des cellules n’est pas constante et peut fortement varier d’une cellule à l’autre.
+L’accumulateur de type Tableau -- Fig~\ref{fig:Array} -- est simple à définir. Deux pas sont choisis pour chaque variable -- $\Delta_{\theta}$ et $\Delta_{\phi}$, et les cellules sont définies selon ces pas. Une telle discrétisation possède un désavantage certain. La taille des cellules n’est pas constante et peut fortement varier d’une cellule à l’autre.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.65]{Array.png}
+\caption{\label{fig:Array} L'accumulateur de type Tableau}
+\end{figure}
 
 On constate que le score des cellules équatoriales sera plus élevé que celui des cellules polaires, la détection des plans sera donc faussée. Il est d’une part difficile de choisir un bon seuil de détection, et des plans différents risquent de voter pour la même cellule. L’approche Tableau est trop simpliste pour être satisfaisante.
 
 \paragraph{Cube}
-L’accumulateur de type Cube cherche à compenser ce problème de taille des cellules, tout en restant simple à implémenter. L’idée est qu’une correspondance entre les cellules de l’accumulateur et et des petits patchs sur la sphère unité doit exister. La solution est de projeter la sphère unité sur le plus petit cube aligné sur la base contenant la sphère à l’aide du difféomorphisme
+L’accumulateur de type Cube -- Fig~\ref{fig:Cube} -- cherche à compenser ce problème de taille des cellules, tout en restant simple à implémenter. L’idée est qu’une correspondance entre les cellules de l’accumulateur et et des petits patchs sur la sphère unité doit exister. La solution est de projeter la sphère unité sur le plus petit cube aligné sur la base contenant la sphère à l’aide du difféomorphisme
 $$\varphi \text{: } S^2 \rightarrow cube$$
 $$s \mapsto s/\lVert s\rVert_{\infty}$$
 Chaque face du cube est ensuite divisée en une grille régulière. Étant donné la normale $n$ d’un plan, on retrouve la cellule dont le score doit être augmenté de la façon suivante. Le côté $a_i$ du cube est déterminé par la direction dominante $n_d$. La projection sur ce cube se fait en multipliant $n$ par $n_d$. Les coordonnées non dominantes deviennent alors $c_x =
@@ -192,12 +210,24 @@ Chaque face du cube est ensuite divisée en une grille régulière. Étant donn�
      \end{cases}
 \end{equation*}
 
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.65]{Cube.png}
+\caption{\label{fig:Cube} L'accumulateur de type Cube}
+\end{figure}
+
 La relation entre l’accumulateur et $S$ est donc simple. La Fig 1.4 montre que les patchs sur la sphère sont plus réguliers que pour l’accumulateur Tableau. L’accumulateur Cube est aussi invariant par une rotation de 90 degrés autour des axes du repère. Cependant, les cellules sont quand même plus petites sur les arêtes du cube qu’au centre des faces. L’accumulateur aura donc plus de mal à détecter un plan si sa normale pointe en direction d’un coin de l’accumulateur Cube. Par ailleurs, l’accumulateur est aussi sensible aux rotations d’angle de moins de 90 degrés.
 
 \paragraph{Balle}
-L’accumulateur de type Balle cherche à discrétiser l’espace de Hough en cellules de taille égale, afin de pallier aux problèmes évoqués. Pour cela, la résolution des patchs doit être différente selon la position sur la sphère unité. La résolution selon $\phi$ est semblable à celle de l’accumulateur Tableau, c’est à dire à pas constant $\Delta_{\phi}$. Selon l’angle $\phi$, l’angle $\theta$ va évoluer de manière à ce que les cellules gardent une taille constante. Le cercle de diamètre le plus grand est situé à l’équateur -- soit $\phi = 0$. Pour la sphère unité, son périmètre est $max_l = 2\pi$. Pour le cercle situé à l’angle $\phi$, la longueur est $l_i = 2\pi \phi$. Ainsi
+L’accumulateur de type Balle -- Fig~\ref{fig:Ball} -- cherche à discrétiser l’espace de Hough en cellules de taille égale, afin de pallier aux problèmes évoqués. Pour cela, la résolution des patchs doit être différente selon la position sur la sphère unité. La résolution selon $\phi$ est semblable à celle de l’accumulateur Tableau, c’est à dire à pas constant $\Delta_{\phi}$. Selon l’angle $\phi$, l’angle $\theta$ va évoluer de manière à ce que les cellules gardent une taille constante. Le cercle de diamètre le plus grand est situé à l’équateur -- soit $\phi = 0$. Pour la sphère unité, son périmètre est $max_l = 2\pi$. Pour le cercle situé à l’angle $\phi$, la longueur est $l_i = 2\pi \phi$. Ainsi
 $$\Delta_{\theta} = \dfrac{360*max_l}{l_i*N_{\theta}}$$
 où $N_{\theta}$ est la résolution souhaitée. L’accumulateur obtenu est bien constitué de cellules de taille égale. Par contre, l’invariance par rotation de 90 degrés n’est pas conservée. Ce problème peut être contourné en choisissant une résolution fine pour la phase de vote et une détection avec une cellule volante.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.65]{Ball.png}
+\caption{\label{fig:Ball} L'accumulateur de type Balle}
+\end{figure}
 
 Notre objectif est de traiter des maillages très grands -- 2 millions de points et 4 millions de facettes. Il est donc nécessaire que l'accumulateur soit assez détaillé pour ne pas confondre plusieurs plans.
 
@@ -229,7 +259,13 @@ Une autre méthode est décrite dans \cite{reggrow3} pour trouver des plans via 
   \item On ajoute au cluster $C$ les points $p$ tel que $n_p\cdot n_g \approx 1$ et tel que $\text{max}\{n_p\cdot(p-g), n_g\cdot(p-g)\}$ est proche de 0 -- c'est-à-dire $p-q$ orthogonal à la normal du plan ;
   \item Une fois qu'on ne peut plus ajouter de points, si $\vert C\vert > T$ un seuil alors le cluster est validé et les points sont retirés du nuage de points. Sinon $g$ est retiré de la liste des graines.
 \end{itemize}
-Cet algorithme est répété jusqu'à ce que la liste des graines soit vide. La particularité de cette croissance de région est qu'elle s'opére sur la sphère unité et non pas sur le nuage de points.
+Cet algorithme est répété jusqu'à ce que la liste des graines soit vide. La particularité de cette croissance de région est qu'elle s'opére sur la sphère unité et non pas sur le nuage de points. La figure~\ref{fig:GaussMap} illustre cet algorithme.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.65]{GaussMap.png}
+\caption{\label{fig:GaussMap} À gauche, la répartition des graines sur la sphère unité. À droite les clusters obtenus.}
+\end{figure}
 
 Notre méthode propose un mélange dans les techniques de croissance de régions. Nous commençons par évaluer la courbure de chaque facette via la méthode de \cite{reggrow3}. Grâce au maillage, le voisinage de la facette s'obtient facilement. Il suffit de prendre les $n$ premières couronnes autour de la facette -- Fig \ref{r}.
 
