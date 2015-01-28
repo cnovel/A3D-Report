@@ -267,15 +267,148 @@ Cet algorithme est répété jusqu'à ce que la liste des graines soit vide. La 
 \caption{\label{fig:GaussMap} À gauche, la répartition des graines sur la sphère unité. À droite les clusters obtenus.}
 \end{figure}
 
-Notre méthode propose un mélange dans les techniques de croissance de régions. Nous commençons par évaluer la courbure de chaque facette via la méthode de \cite{reggrow3}. Grâce au maillage, le voisinage de la facette s'obtient facilement. Il suffit de prendre les $n$ premières couronnes autour de la facette -- Fig \ref{r}.
+Notre méthode propose un mélange dans les techniques de croissance de régions. Nous commençons par évaluer la courbure de chaque facette via la méthode de \cite{reggrow3}. Grâce au maillage, le voisinage de la facette s'obtient facilement. Il suffit de prendre les $n$ premières couronnes de points autour de la facette -- Fig \ref{fig:couronne}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.5]{Couronnes.png}
+\caption{\label{fig:couronne} Couronnes successive d'un triangle. En rouge, la première couronne, en vert la seconde, en bleu la troisième.}
+\end{figure}
+
+Si la courbure de la facette est inférieure à un seuil, la facette est ajoutée dans la liste des graines. Lorsque toutes les facettes sont traitées, on classe la liste par ordre croissant de courbures. La graine la plus probable -- car se trouvant à l'endroit le plus plan -- se trouve donc en début de liste.
+
+Chaque facette est ensuite traitée dans une phase de croissance de région. L'algorithme suivant est appliqué :
+\begin{enumerate}
+  \item On sélectionne la facette $f$, le premier élément de la liste des graines. On crée l'ensemble $P$ le plan que l'on cherche et $f$ est ajoutée à $P$ ;
+  \item On ajoute les 3 voisines de $f$ à la queue $Q$ ;
+  \item On sélectionne le premier élément de $Q$. Si cette facette est cohérente avec le plan, elle est ajoutée à $P$ et ces trois voisines sont ajoutées à $Q$ -- sauf si elles ont déjà été ajoutées ;
+  \item On itère l'étape précédente jusqu'à ce que $Q$ soit vide ;
+  \item On vérifie que le plan $P$ est effectivement un plan ;
+  \item On retire les facettes de $P$ de la liste des facettes à traiter.
+\end{enumerate}
+
+Les critères de cohérence de facette et de calcul du plan sont détaillés dans la partie~\ref{subsec:growthimpl}. Notre algorithme de croissance de région est rapide. L'information de courbure est obtenu rapidement grâce au maillage et le traitement de chaque facette peut se faire en parallèle. À l'inverse d'un \textit{RANSAC} ou de la transformée de Hough, la croissance de région permet d'obtenir une information locale sur le plan : les facettes qui constituent le plan forment une unique composante. L'utilisation de graines permet de choisir correctement le plan de départ et de traiter d'abord les plans les plus probables. Enfin, l'utilisation d'un maillage par rapport au point est que nous attribuons des plans à des facettes et non pas à des points. En effet, un point peut appartenir à plusieurs plans -- s'il se trouve sur une arête ou dans un coin par exemple. Mais une facette ne peut appartenir qu'à un seul plan. L'utilisation des facettes permet de lever facilement l'ambiguïté existante dans un nuage de points.
 
 \subsection{Implémentation}
+\label{subsec:growthimpl}
+L'implémentation de notre algorithme a été réalisée en \texttt{C++} ainsi qu'avec \texttt{OpenMP} pour la parallélisation.
+
+La première partie de l'agorithme réside dans le calcul des informations de chaque facette. Durant cette phase, 3 valeurs sont calculées et attribuées à la facette : la normale, la normale étendue et la courbure. La normale est calculée simplement grâce à un produit vectoriel entre deux côtés de la facette. Le calcul de la courbure et de la normale étendue est détaillé en annexe. La principale difficulté de cette étape se trouve dans le parcours des points autour de la facette. Nous avons mis en place la méthode par récurrence suivante :
+\begin{itemize}
+  \item La première couronne est constituée des 3 points de la facette ;
+  \item Sachant que nous avons obtenu toutes les couronnes de $1$ à $n-1$, la couronne $n$ est composée des sommets adjacents à la couronne $n-1$ non encore visité.
+\end{itemize}
+Cette méthode tire profit de la technique de parcours sur un \textit{mesh}. Il est facile de parcourir les voisins d'un sommet en étoilant autour de ce dernier.
+
+La taille de la couronne est un paramètre important. Plus une couronne est petite, plus elle va être sensible au bruit et à l'imprécision du modèle. Cependant, une grande couronne est aussi à proscrire, puisque nous risquons de ne pas détecter des plans d'une largeur inférieure à celle de la couronne. En pratique, selon le modèle à traiter, une largeur de couronne de 3 à 7 donne de bons résultats.
+
+Le calcul des informations est effectué en parallèle. Pour éviter tout problème de concurrence, la liste des facettes est séparer en $c$ morceaux distincts, $c$ étant le nombre de threads disponibles.
+
+La liste des graines $l_{graines}$ est ensuite créée. Un seuil \texttt{SEED\_CURV} de $0.001$ donne de bons résultats comme seuil de courbure pour le filtrage des graines. La liste est ensuite triée par ordre croissant de courbure.
+
+La figure~\ref{fig:exCouronneSeuil} montre l'influence des paramètres de largeur de couronnes et de seuil de courbure.
+
+XXX Images
+
+La deuxième phase de l'algorithme consiste à traiter les graines dans l'ordre de la liste. On note $g$ la graine sélectionnée, $p$ le plan engendré par la croissance de région, $E_p$ l'équation de ce plan, $l_{facettes}$ la liste des facettes contenues dans ce plan, $F$ l'ensemble des facettes disponibles.
+
+L'initialisation se fait comme suit. $g$ est sélectionnée. Le plan $p$ est créé et initialisé : $E_p$ est définie par la normale étendue de $g$ et passe par le barycentre de $g$. $g$ est ajoutée à $l_{facettes}$. On crée la queue $Q$ et on ajoute les trois facettes voisines de $g$.
+
+Ensuite, tant que $l_{facettes} < M$ et que $Q$ n'est pas vide, on sélectionne la première facette $q$ de $Q$. On vérifie si $q$ est consistante avec $p$. Les critères de consistance sont les suivants :
+\begin{itemize}
+  \item Soit $dist(q, p) < \text{\texttt{Tolerance}}$ et $\text{normale}_q * \text{normale}_p > \text{\texttt{minimumAngle}}$ ;
+  \item Soit $dist(q, p) < \text{\texttt{Tolerance}}$ et $\text{courbure}_q < \text{\texttt{SEED\_CURV}}$ et $\text{extended\_normale}_q * \text{normale}_p > 0.95$ ;
+  \item Soit $dist(q, p) < \text{\texttt{Tolerance}}$ et $\text{extended\_normale}_q * \text{normale}_p > \text{\texttt{minimumAngle}}$ et $\text{courbure}_q < \text{\texttt{MAXIMUM\_FACET\_CURVATURE}}$.
+\end{itemize}
+Si $q$ satisfait un des critères ci-dessus, alors $q$ est ajoutée à $l_{facettes}$, $p$ est mis à jour en calculant $E_p$ à l'aide d'une \textit{PCA} sur l'ensemble de $l_{facettes}$ et avec $p$ passant par le barycentre de $l_{facettes}$. Les facettes voisines de $q$ sont ajoutées à $Q$, sauf si elles ont déjà été ajoutées.
+
+Lorsque $l_{facettes} \geq M$, on effectue le même test de cohérence, sauf que $E_p$ n'est plus mise à jour. Les $M$ premières facettes servent à choisir l'équation du plan pour compenser le bruit et le manque de précision du modèle. Dans notre implémentation, $M = 200$ donne de bons résultats.
+
+Lorsque $Q$ est vide, on calcule de nouveau $E_p$ en se basant sur $l_{facettes}$. On vérifie aussi si le plan est cohérent. Le plan doit satisfaire tous les critères suivants :
+\begin{enumerate}
+  \item $\text{distance moyenne} < \text{\texttt{Tolerance}}$ ;
+  \item $\text{variance} < \text{\texttt{maxVariance}}$ ;
+  \item $\text{variance des normales} < \text{\texttt{MAXIMUM\_NORMAL\_VARIANCE}}$ ;
+  \item $\text{courbure} < \text{\texttt{maxPlaneCurvature}}$ ;
+  \item $\text{précision moyenne} < \text{\texttt{MAXIMUM\_ACCURACY}}$.
+\end{enumerate}
+Le premier critère utilise la distance moyenne. Pour cela on calcule simplement la moyenne de la distance de chaque barycentre de facette au plan. Le second critère correspond à la variance de ces points. Le troisième critère calcule la variance des normales étendues de chaque facette par rapport à la normale du plan, considérée comme la moyenne. Le quatrième critère calcule la courbure estimée du plan et vérifie qu'elle est inférieure à un seuil. Enfin le dernier critère se base sur les données de précisions fournies par \textit{Smart3DCapture} et permet de ne pas trouver de plan dans les zones trop peu précises.
+
+Si le plan est cohérent, une deuxième passe est alors effectuée. Il s'agit d'ajouter les facettes voisines du plan avec des critères moins sévère que précédemment. On crée une nouvelle queue $Q_2$ qui est initialisée avec toutes les facettes voisines de $p$. La première facette $q$ de $Q_2$ est sélectionnée. Elle doit répondre aux deux critères suivants :
+\begin{enumerate}
+  \item $\text{dist}(q, p) < \text{\texttt{Tolerance}}$ ;
+  \item L'angle entre les normales de $q$ et $p$ est inférieur à 30 degrés.
+\end{enumerate}
+Si $q$ vérifie ces deux critères, alors $q$ est ajouté à $l_{facettes}$ et ces trois voisines sont ajoutées à $Q_2$ -- sauf si elles ont déjà été ajoutées. Cette seconde passe se termine lorsque $Q_2$ est vide. La cohérence du plan est de nouveau vérifiée selon les mêmes critères que précédemment.
+
+Que le plan $p$ soit valide ou pas, l'ensemble $F$ est mis à jour : $F = F\backslash l_{facettes}$. De même, les graines présentes dans $l_{facettes}$ sont retirées de $l_{graines}$. La phase de croissance de région se termine lorsque $l_{graines}$ est vide.
+
+Une dernière phase de dilatation/érosion a lieu pour combler les éventuels trous ainsi que pour obtenir les arêtes entre deux plans. \textit{CGAL} ne propose pas encore de méthode pour effectuer une opération de dilatation/érosion d'une région sur un mesh. Nous avons donc créer une technique spécifique s'opérant en parallèle  pour notre problème. Dans les paragraphes détaillant cette technique, le terme \textit{voisine} décrit deux facettes partageant au moins une arête ou un sommet.
+
+La liste des facettes du mesh est séparée en $c$ listes distinctes, $c$ correspondant au nombre de threads disponibles. Chacune de ces listes est traitée séparément par un thread.
+
+La première phase est la phase de dilatation. Le thread parcourt la liste. Pour chaque facette, la thread vérifie si elle est attribuée à un plan. Si elle ne l'est pas, on cherche si la facette est adjacente à un ou plusieurs plans. Dans ce cas, la facette est rattaché au plan le plus cohérent avec sa normale une fois toute la liste traitée. Cette phase de dilatation est répété autant de fois que nécessaire. Dans notre implémentation, nous appliquons cette dilatation deux fois.
+
+La seconde phase est la phase d'érosion. Le thread parcourt de nouveau la liste de facettes. Si une facette est rattachée à un plan, on vérifie si elle a une voisine non-rattachée à un plan. Si tel est le cas, la facette est désattribuée une fois toute la liste traitée. Cette phase d'érosion est répété autant de fois que la phase de dilation. La figure~\ref{fig:DilEro} illustre les phases de dilatation et d'érosion.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.3]{Dila1.jpg}~\includegraphics[scale=0.3]{Dila2.jpg}~\includegraphics[scale=0.3]{Dila3.jpg}
+
+\includegraphics[scale=0.3]{Dila4.jpg}~\includegraphics[scale=0.3]{Dila5.jpg}~\includegraphics[scale=0.3]{Dila6.jpg}
+\caption{\label{fig:DilEro} Étapes de dilatation/érosion}
+\end{figure}
+
+Les plans sont désormais détectés. La figure~\ref{fig:resultPlan} illuste le résultat de cette détection. Il faut maintenant modifier la géométrie du modèle pour faire apparaitre ces plans.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.3]{Plan1.png} \includegraphics[scale=0.3]{Plan2.png} \includegraphics[scale=0.3]{Plan3.png}
+\caption{\label{fig:resultPlan} Résultats de la détection de plan. Chaque plan est identifié par une couleur différente. Les zones en gris sombre sont les zones sans plan.}
+\end{figure}
 
 \section{Maillage}
 \subsection{Problématique}
+Maintenant que les plans sont détectés, il faut projetés les points sur ces plans, afin d'obtenir la géométrie voulue. Cependant, une simple projection directe des points sur les plans, les arêtes ou les coins engendre de mauvais résultats. La topologie du mesh est \textit{cassée} par la projection, comme en témoigne la figure~\ref{fig:probproj}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.55]{prob1.png} \includegraphics[scale=0.4]{prob2.png} \includegraphics[scale=0.25]{prob3.png}
+\caption{\label{fig:probproj} Problèmes de reprojection dues à la présence d'arêtes entre deux plans.}
+\end{figure}
+
+Il est donc nécessaire de traiter le nuage de points pour éviter ce genre d'erreur topologique et de recréer le maillage à partir du nuage de points et des informations précédemment calculées -- notamment la normale de chaque point.
+
 \subsection{Traitement du nuage de points}
+La première étape consiste à traiter correctement les points du mesh dans lequel les plans viennent d'être détectés. Pour cela, nous distinguons 4 types de points :
+\begin{enumerate}
+  \item Neutre -- aucune des facettes autour du point n'est attribuée à un plan ;
+  \item Plan -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a qu'un seul même plan parmi les facette attribuées ;
+  \item Arête -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a que deux plans parmi les facette attribuées ;
+  \item Coin -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a au moins trois plans parmi les facette attribuées.
+\end{enumerate}
+
+Les points \textit{Neutre} ne sont pas déplacés. Les points \textit{Plan} sont projetés sur leur plan.
+
+Pour les points \textit{Arête}, plusieurs cas se présentent. Dans un premier temps, on évalue sur les plans sont correctement orientés pour faire apparaître une arête. Cela se traduit par des normales ni trop proches ni trop opposées, puisque dans ces cas la projection risque d'être aberrante. Dans notre implémentation, le critère de bonne arête est le suivant
+$$n_1\cdot n_2 < 0.9 \text{ et } n_1\cdot n_2 > -0.7$$
+Si ce critère n'est pas satisfait, le point est déplacé sur le barycentre de ses projections sur chaque plan. Si le critère est satisfait, on crée un point correspondant à la projection du point traité orthogonalement sur l'arête formée par les deux plans. Si la distance entre les deux points est inférieure au seuil \texttt{Tolerance}, alors le point traité est déplacé sur la projection. Sinon, il est déplacé sur le barycentre de ses projections sur chaque plan -- si ce déplacement respecte aussi le seuil \texttt{Tolerance}.
+
+Pour les points \textit{Coin}, il y a $N$ plans à traiter, $N \geq 3$. On commence par considérer chaque triplet de plans. Pour un triplet, on vérifie s'il est possible de projeter le point sur l'intersection des trois plans. Pour cela, on vérifie les critères suivants :
+\begin{enumerate}
+  \item $\vert n_1 \cdot n_2 \vert < 0.7$ ;
+  \item $\vert n_1 \cdot n_3 \vert < 0.7$ ;
+  \item $\vert n_2 \cdot n_3 \vert < 0.7$ ;
+  \item $\vert (n_1 \wedge n_2) \cdot n_3 \vert > 0.3$ ;
+  \item $\vert (n_1 \wedge n_3) \cdot n_2 \vert > 0.3$ ;
+  \item $\vert (n_2 \wedge n_3) \cdot n_1 \vert > 0.3$.
+\end{enumerate}
+Les trois premiers critères servent à vérifier si chaque couple de plans forme une bonne arête.
+
 \subsection{Classification des triangles}
+
 \subsection{Implémentation}
+
 
 \section{Simplification}
 \subsection{Problématique}
@@ -297,4 +430,8 @@ Notre méthode propose un mélange dans les techniques de croissance de régions
 \bibliographystyle{plain}
 \bibliography{biblio}
 \addcontentsline{toc}{section}{References}
+\newpage
+\appendix
+\section{Calcul}
+Test popopopopop
 \end{document}
