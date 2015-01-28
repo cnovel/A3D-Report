@@ -388,7 +388,7 @@ La première étape consiste à traiter correctement les points du mesh dans leq
   \item Coin -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a au moins trois plans parmi les facette attribuées.
 \end{enumerate}
 
-Les points \textit{Neutre} ne sont pas déplacés. Les points \textit{Plan} sont projetés sur leur plan.
+\paragraph{Projection des points} Les points \textit{Neutre} ne sont pas déplacés. Les points \textit{Plan} sont projetés sur leur plan.
 
 Pour les points \textit{Arête}, plusieurs cas se présentent. Dans un premier temps, on évalue sur les plans sont correctement orientés pour faire apparaître une arête. Cela se traduit par des normales ni trop proches ni trop opposées, puisque dans ces cas la projection risque d'être aberrante. Dans notre implémentation, le critère de bonne arête est le suivant
 $$n_1\cdot n_2 < 0.9 \text{ et } n_1\cdot n_2 > -0.7$$
@@ -403,11 +403,32 @@ Pour les points \textit{Coin}, il y a $N$ plans à traiter, $N \geq 3$. On comme
   \item $\vert (n_1 \wedge n_3) \cdot n_2 \vert > 0.3$ ;
   \item $\vert (n_2 \wedge n_3) \cdot n_1 \vert > 0.3$.
 \end{enumerate}
-Les trois premiers critères servent à vérifier si chaque couple de plans forme une bonne arête.
+Les trois premiers critères servent à vérifier si chaque couple de plans forme une bonne arête. Les trois derniers servent à vérifier si nous sommes bien en présence d'un point d'intersection et non pas d'une droite : dans le cas extrême d'une intersection de plan formant une droite, les trois premiers critères sont vérifiés mais la projection ne peut pas être bonne. Les trois derniers paramètres évitent d'avoir des points qui sont projetés trop loin de leur position d'origine.
 
-\subsection{Classification des triangles}
+Si tous les critères sont vérifiés, on enregistre la position de l'intersection. Sinon on enregistre le barycentre des projections du point sur chaque plan. Une fois chaque triplet traité, on calcule le barycentre de chaque position obtenue et on déplace le point traité sur ce barycentre.
 
-\subsection{Implémentation}
+Cette étape permet de projeter correctement les points sur les plans. Cependant, ces précautions ne sont pas suffisantes pour ne pas casser la topologie du maillage. Nous allons introduire et retirer des points afin de préparer une nouvelle triangulation du nuage de points, dans le but d'obtenir un maillage correct.
+
+\paragraph{Échantillonage des arêtes} Nous introduisons des points le long des arêtes afin de faciliter le maillage le long de ces arêtes. Les arêtes sont détectées lors de la phase de projection. Lorsque un point de type \textit{Arête} ou \textit{Coin} est projeté sur l'arête ou l'intersection, alors ce point est ajouté à un objet \texttt{Ridge} correspondant à l'arête entre deux plans. Une fois tous les points ajoutés, on traite chaque arête. Les points des arêtes sont classés selon le vecteur directeur de l'arête. Cette dernière est ensuite séparée en \textit{chunks} : l'arête n'est pas forcément continue et un échantillonage naïf introduirait des défauts dans le modèle.
+
+Une fois l'arête traitée, on échantillone chaque \textit{chunk}. La distance d'échantillonange est determinée par la distance moyenne entre chaque point de l'arête. Un point est ajouté sur l'arête toutes les demi-distance moyenne. Sachant que l'on garde les points déjà présents sur l'arête, le nombre de points est triplé.
+
+\paragraph{Retrait des points incorrects} La projection des sommets a comme effet de replier la surface sur elle-même -- figure~\ref{fig:probproj} -- et ce malgré les précautions prises auparavant. Il convient donc de retirer les points qui posent problème.
+
+La première étape consiste à repérer les sommets où la surface se replie. On cherche ainsi les points de type \textit{Plan}. Parmi ces points, on retient ceux qui ont au moins deux facettes dont la normale est inversée, c'est-à-dire tel que $n_{f_{1}} \cdot n_{f_{2}} = -1$ si les normales sont normalisées.
+
+La seconde étape consiste à identifier les points qui se trouvent dans une zone où la surface est replié. Pour cela, la méthode la plus efficace est de tester si un point \textit{tombe au milieu} d'une autre facette. Soit $a$, $b$ et $c$ les trois sommets d'une facette. Sachant que l'on travaille en 2D -- le plan est déjà projeté -- on identifie un point $p$ au milieu d'une facette de la manière suivante :
+$$n_A = (b-a)\wedge(p-a) ; n_B = (c-b)\wedge(p-b) ; n_C = (a-c)\wedge(p-c)$$
+$$\text{Si }n_A\cdot n_B > 0 \text{ et } n_A\cdot n_C > 0 \text{ et } n_B\cdot n_C > 0 \text{ alors le point est au milieu de la facette.}$$
+Cette méthode reste lente car il faut vérifier pour chaque point d'un plan l'ensemble des facettes. Pour accélérer le traitement, cette phase est effectuée en parallèle et le choix des plans est affiné au fil des étapes. Ainsi, si aucun point d'un plan n'a été détecté dans la première étape, alors la seconde étape n'est pas appliquée à ce plan.
+
+Les points identifiés lors de ces deux étapes sont retirés du nuage de points.
+
+\paragraph{Informations de points} Pour permettre un meilleur maillage, nous avons besoin de certaines informations sur les points. Outre le type -- \textit{Neutre}, \textit{Plan}, \textit{Arête} ou \textit{Coin} -- nous avons aussi besoin de l'échantillonage et de la normale. L'échantillonage correspond à la longueur de la plus grande arête reliée au point. Dans le cas de points rajoutés, l'échantillonage est fixé à la distance moyenne entre les points de l'arête. La normale est calculée comme étant la moyenne des normales des facettes entourant le point. Pour les points rajoutés, la normale est la moyenne des deux normales des plans formant l'arête.\newline
+
+Désormais, nous avons tous les élèments en main pour créer le nouveau maillage du modèle.
+
+\subsection{Maillage du nuage de points}
 
 
 \section{Simplification}
