@@ -431,7 +431,45 @@ Désormais, nous avons tous les élèments en main pour créer le nouveau mailla
 \subsection{Maillage du nuage de points}
 Pour mailler ce nuage de points, nous reprenons les méthodes utilisées par \textit{Smart3DCapture}. Le maillage du nuage de points est largement inspiré de \cite{maillage1}. Afin de s'adapter à la spécificité de notre modèle avec plans, notre méthode s'inspire aussi de \cite{maillage2}.
 
-\cite{maillage1} présente une méthode pour obtenir une surface à partir d'un nuage de point et d'informations de visibilité.
+\cite{maillage1} présente une méthode pour obtenir une surface à partir d'un nuage de point et d'informations de visibilité. On effecture d'abord une triangulation 3D du nuage de points. Ensuite, chaque tétrahèdre -- appelé aussi cellule -- est traité à l'aide des informations de visibilités. Le but est de déterminée si la cellule est à l'intérieur de la surface ou à l'extérieur de la surface. Pour chaque cellule, des scores sont calculées. Des coûts sont aussi calculées entre les faces de chaque cellule. La surface est ensuite extraite à l'aide d'un \textit{graphcut}.
+
+Nous réutilisons cette technique du \textit{graphcut} mais nous calculons de nouveaux coûts, plus adaptés à notre mesh.
+
+\paragraph{Coût des cellules} Le coût des cellules doit refléter la propriété de la position de la cellule par rapport à la surface, c'est-à-dire est-ce que la cellule se trouve à l'intérieur ou à l'extérieur de la surface. Pour évaluer cette propriété, nous nous basons sur les normales de chaque point. De manière intuitive, si les quatre normales d'une cellule pointent vers l'intérieur de la cellule, c'est que cette dernière est à l'extérieur de la surface. De la même façon, si les quatre normales pointent vers l'extérieur, la cellule se trouve à l'intérieur de la surface -- figure~\ref{fig:inout}.
+
+XXX FIGURE IN OUT
+
+Le score de la cellule est calculé à l'aide de son barycentre $b$. Pour chaque sommet -- $s_1, s_2, s_3, s_4$ -- on calcule le produit scalaire $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert}$ et on l'ajoute au score. Si $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert} > 0.3$, on ajoute $1$ au score. Si $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert} < -0.3$, on retranche $1$ au score. Les cellules à l'intérieur ont un score négatif et celles à l'extérieur un score positif. Le seuil de $\pm 0.3$ permet de favoriser les normales qui caractérisent vraiment la cellule par rapport aux normales plus ambiguës.
+
+\paragraph{Coût des facettes} \cite{maillage2} introduit un coût pour les facettes prenant en compte les plans détectés. L'idée générale est d'empêcher le \textit{graphcut} de passer par une facette qui serait incohérente vis-à-vis de la géométrie détectée. Plusieurs catégories de facettes sont introduites :
+\begin{enumerate}
+  \item Facette dite \textit{Free-form coherent}. Ce sont les facettes avec 0, 1 ou 2 points de type \textit{Plan} appartenant au même plan.
+  \item Facette dite \textit{Structurally coherent}. Ce sont les facettes avec :
+  \begin{itemize}
+    \item 3 points de type \textit{Plan} appartenant au même plan ;
+    \item 2 points de type \textit{Plan} reliés au plan $i$ et 1 point de type \textit{Arète} relié aux plans $i$ et $j$ ;
+    \item 2 points de type \textit{Arête} reliés aux plans $i$ et $j$ et 1un point de type \textit{Plan} relié au plan $i$ ;
+    \item 2 points de type \textit{Plan} reliés au plan $i$ et un point de type \textit{Coin} relié aux plans $i$, $j$ et $k$ ;
+    \item 2 points de type \textit{Arête} reliés respectivement aux plans $i$ et $j$ et aux plans $j$ et $k$ et 1 point de type \textit{Coin} relié aux plans $i$, $j$ et $k$ ;
+    \item 1 point de type \textit{Plan} relié au plan $i$, 1 point de type \textit{Arête} relié aux plans $i$ et $j$, 1 point de type \textit{Coin} relié aux plans $i$, $j$ et $k$ ;
+  \end{itemize}
+  \item Facette dite non-cohérente.
+\end{enumerate}
+
+La figure~\ref{fig:coherence} illustre ces catégories.
+
+Dans notre implémentation, nous avons rajouté un septième type de facette \textit{Structurally coherent}. Il s'agit d'une facette composée de 2 points de type \textit{Arête} reliés aux plans $i$ et $j$ et d'un point de type \textit{Arête} reliés aux plans $j$ et $k$. Ce type de facette est nécessaire pour mailler correctement un plan qui se termine en pointe fine.
+
+Selon la catégorie de la facette, le coût ne sera pas le même. Les facettes \textit{Structurally coherent} ont un coût nul. Les facettes \textit{Free-form coherent} entraîne un coût léger, alors que les facettes non-cohérente entraîne un coût élevé. Le but est d'empécher la surface de passer par ces facettes. Si le coût est trop élevé, la surface ne passera pas par cette facette.
+
+Dans notre implémentation,
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.4]{coherent.png}
+\caption{\label{fig:coherence} Les facettes \textit{Free-form coherent} et \textit{Structurally coherent}.}
+\end{figure}
+
 
 \section{Simplification}
 \subsection{Problématique}
@@ -450,7 +488,7 @@ Pour mailler ce nuage de points, nous reprenons les méthodes utilisées par \te
 \addcontentsline{toc}{section}{Conclusion}
 
 \newpage
-\bibliographystyle{plain}
+\bibliographystyle{alpha}
 \bibliography{biblio}
 \addcontentsline{toc}{section}{References}
 \newpage
