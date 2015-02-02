@@ -431,7 +431,7 @@ Désormais, nous avons tous les élèments en main pour créer le nouveau mailla
 \subsection{Maillage du nuage de points}
 Pour mailler ce nuage de points, nous reprenons les méthodes utilisées par \textit{Smart3DCapture}. Le maillage du nuage de points est largement inspiré de \cite{maillage1}. Afin de s'adapter à la spécificité de notre modèle avec plans, notre méthode s'inspire aussi de \cite{maillage2}.
 
-\cite{maillage1} présente une méthode pour obtenir une surface à partir d'un nuage de point et d'informations de visibilité. On effecture d'abord une triangulation 3D du nuage de points. Ensuite, chaque tétrahèdre -- appelé aussi cellule -- est traité à l'aide des informations de visibilités. Le but est de déterminée si la cellule est à l'intérieur de la surface ou à l'extérieur de la surface. Pour chaque cellule, des scores sont calculées. Des coûts sont aussi calculées entre les faces de chaque cellule. La surface est ensuite extraite à l'aide d'un \textit{graphcut}.
+\cite{maillage1} présente une méthode pour obtenir une surface à partir d'un nuage de point et d'informations de visibilité. On effecture d'abord une triangulation 3D du nuage de points. Ensuite, chaque tétrahèdre -- appelé aussi cellule -- est traité à l'aide des informations de visibilités. Le but est de déterminée si la cellule est à l'intérieur de la surface ou à l'extérieur de la surface. Pour chaque cellule, des scores sont calculées. Des coûts sont aussi calculées entre les faces de chaque cellule. La surface est ensuite extraite à l'aide d'un \textit{graphcut}. Le \textit{graphcut} est un algorithme de coupe minimale. Le but est d'obtenir la surface qui sépare les cellules en deux parties distinctes avec un score minimal. Des dispositions sont prises afin d'éviter la solution triviale de la surface vide.
 
 Nous réutilisons cette technique du \textit{graphcut} mais nous calculons de nouveaux coûts, plus adaptés à notre mesh.
 
@@ -458,24 +458,69 @@ Le score de la cellule est calculé à l'aide de son barycentre $b$. Pour chaque
 
 La figure~\ref{fig:coherence} illustre ces catégories.
 
-Dans notre implémentation, nous avons rajouté un septième type de facette \textit{Structurally coherent}. Il s'agit d'une facette composée de 2 points de type \textit{Arête} reliés aux plans $i$ et $j$ et d'un point de type \textit{Arête} reliés aux plans $j$ et $k$. Ce type de facette est nécessaire pour mailler correctement un plan qui se termine en pointe fine.
-
-Selon la catégorie de la facette, le coût ne sera pas le même. Les facettes \textit{Structurally coherent} ont un coût nul. Les facettes \textit{Free-form coherent} entraîne un coût léger, alors que les facettes non-cohérente entraîne un coût élevé. Le but est d'empécher la surface de passer par ces facettes. Si le coût est trop élevé, la surface ne passera pas par cette facette.
-
-Dans notre implémentation,
-
 \begin{figure}[h]
 \centering
 \includegraphics[scale=0.4]{coherent.png}
 \caption{\label{fig:coherence} Les facettes \textit{Free-form coherent} et \textit{Structurally coherent}.}
 \end{figure}
 
+Dans notre implémentation, nous avons rajouté un septième type de facette \textit{Structurally coherent}. Il s'agit d'une facette composée de 2 points de type \textit{Arête} reliés aux plans $i$ et $j$ et d'un point de type \textit{Arête} reliés aux plans $j$ et $k$. Ce type de facette est nécessaire pour mailler correctement un plan qui se termine en pointe fine.
+
+Selon la catégorie de la facette, le coût ne sera pas le même. Les facettes \textit{Structurally coherent} ont un coût nul. Les facettes \textit{Free-form coherent} entraîne un coût léger, alors que les facettes non-cohérente entraîne un coût élevé. Le but est d'empécher la surface de passer par ces facettes. Si le coût est trop élevé, la surface ne passera pas par cette facette.
+
+Le coût des cellules permet surtout d'obtenir une surface similaire à celle d'origine dans les zones non planaires. La figure~\ref{fig:comparo} illustre la faible différence entre le maillage d'origine et le maillage recalulé.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.4]{Comparo2.png} \includegraphics[scale=0.4]{Comparo3.png}
+\caption{\label{fig:comparo} Les triangles en vert atteste d'un décalage nul, les triangles en jaune d'un décalage de moins de 1\%.}
+\end{figure}
+
+Le coût des facettes permet d'éviter une mauvaise triangulation, notamment lorsque deux plans se trouvent côte à côte. La figure~\ref{fig:avap} montre la différence entre l'ancien maillage et le nouveau maillage.
+
+À noter que lors de l'extraction de la surface, on obtient de larges facettes incohérentes avec la scène. Avant de les traiter, on se base sur l'échantillonage de chaque point. Si un point est relié est reliée à une arête dont la longueur est largement supérieure à la distance d'échantillonage du point, alors la facette est rétirée. Cette étape de filtrage est surtout utile au niveau des bords du modèle.
+
+Le maillage est désormais cohérent avec la scène. Il est désormais nécessaire de le simplifier afin de réduire le poids du modèle.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.35]{Comparo4.png} \includegraphics[scale=0.34]{Comparo5.png} 
+\caption{\label{fig:avap} À gauche, l'ancien maillage. À droite, le nouveau maillage.}
+\end{figure}
 
 \section{Simplification}
 \subsection{Problématique}
+Les modèles obtenus après le remaillage sont extrêmement détaillés, autant dans les parties planes que dans les parties non-planes. Il est nécessaire que notre algorithme de simplification puisse s'adapter autant aux parties planes qu'aux parties présentant des détails fins. Il faut aussi que cet algorithme conserve la planarité des plans détectés.
+
 \subsection{Simplification existante et limitations}
+Actuellement, \textit{Smart3DCapture} utilise un algorithme de simplification basé sur un mécanisme d'\textit{edge collapse}. Cet algorithme provient de la librairie \texttt{CGAL} et son implémentation provient majoritairement de \cite{simp1, simp2}. L'idée de l'algorithme est de fusionner certains sommets entre eux pour réduire le nombre de facettes tout en conservant au mieux la géométrie du modèle.
+
+Pour chaque sommet, une quadrique est calculée. La quadrique correspond à l'ensemble des 10 paramètres décrivant la surface localement autour du point. Pour chaque arête, on calcule le point qui minimise l'erreur de quadrique lorsque l'arête est supprimée ainsi que le coût de cette erreur. Si le déplacement du point est trop important, on utilise plutôt le placement de Lindstrom-Turk \cite{simp2}. Ensuite, on traite les arêtes par ordre croissant de coût : on simplifiera d'abord les zones où le coût de déplacement est faible. La simplification s'arrête une fois que la somme des erreurs dépasse un certain seuil.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.33]{Simpli1.png}
+\caption{\label{fig:simpl1} À gauche, le maillage non simplifié. À droite, le maillage simplifié via la méthode classique.}
+\end{figure}
+
+La figure~\ref{fig:simpl1} expose le problème de l'algorithme de simplification actuel. On remarque que sur les bords du plan, le maillage simplifié n'est pas tout à fait plan. De plus, la simplification est parfois trop importante -- cf l'entaille sur le bord droit de l'immeuble.
+
 \subsection{Modifications}
-\subsection{Implémentation}
+Nous avons modifié l'algorithme de simplification pour tenir compte des spécificités de notre maillage.
+
+La première modification concerne le placement. Lorsque le placement optimal est calculé, nous voulons être certains que le placement est cohérent par rapport au maillage initial. Pour cela, le point obtenu via placement optimal est ensuite projeté sur le plan, l'arête ou le coin associé. Cette nouvelle projection nous permet d'être certains que la géométrie des plans et des arêtes est respectée.
+
+La seconde modification concerne l'estimation du coût de déplacement. Lorsque l'un des points fusionnés est intégralement entouré de facettes assignées à un plan, alors on estime que le coût du déplacement doit être nul. Si le coût n'est pas nul, alors on modifie ce coût à un coût infini. Cela signifie que nous voulons que la simplification n'entraîne aucune perte de précision.
+
+Un coût particulier est aussi créé pour les bordures du maillage qui sont planes. En effet, à cet endroit le mécanisme d'\textit{edge collapse} n'entraîne aucun coût puisque le point reste dans le plan. Mais le point est tout de même décalé au milieu de l'arête : la simplification ronge ainsi les bords du maillage plan. our éviter ce phénomène, on introduit un coût de distance : dans le cas d'une arête en bordure de maillage, si la distance entre le nouveau et l'ancien point est supérieure à un seuil, alors on attribue un coût infini à la suppression de l'arête.
+
+\begin{figure}[h]
+\centering
+\includegraphics[scale=0.33]{Simpli2.png}
+\caption{\label{fig:simpl2} À gauche, le maillage non simplifié. À droite, le maillage simplifié via la méthode modifiée.}
+\end{figure}
+
+La figure~\ref{fig:simpl2} montre l'amélioration du maillage à l'aide de notre méthode. La modification du placement donne de plus de meilleurs résultats sur les bordures des plans.
 
 \section{Résultats}
 \subsection{Niveaux de simplifications}
