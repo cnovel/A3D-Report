@@ -1,4 +1,4 @@
-\documentclass[12pt, twoside]{article}
+﻿\documentclass[12pt, twoside]{article}
 \usepackage[left=2.5cm,right=2cm,top=2cm,bottom=2cm]{geometry}
 
 \usepackage{lastpage}
@@ -75,7 +75,7 @@
 
 % Title
 \rule{\textwidth}{.4pt}
-{ \huge \bfseries Sémantisation géométrique de modèles de villes : Détection de plans \\[0.4cm] }
+{ \huge \bfseries Sémantisation géométrique de modèles de villes : détection de plans \\[0.4cm] }
 
 \rule{\textwidth}{.4pt}\\[1.5cm]
 
@@ -101,6 +101,13 @@ Renaud \textsc{Keriven}
 \newpage
 \begin{abstract}
 Dans ce rapport,
+
+nous proposons ensuite de sémantiser à l'aide de plans
+
+2 OK
+
+pour ce type d'application et pas genre
+
 \end{abstract}~\\[5cm]
 \addcontentsline{toc}{section}{Résumé}
 
@@ -114,9 +121,11 @@ Je voudrais remercier mon superviseur Renaud Keriven, qui a su dirigé mes effor
 
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
-La création de modèles tridimensionnels de villes à partir de données photographiques et/ou de relevés lasers de manière automatique est en plein essor. De nombreux acteurs, tels Google, Apple ou Microsoft, proposent de visualiser des villes et des bâtiments en trois dimensions avec leur logiciels de cartographie respectifs. Les problèmatiques soulevées sont nombreuses et le problème initial consistant à obtenir un modèle précis et détaillé a été longuement étudié et de nombreuses techniques permettent d'obtenir des résultats satisfaisant.
+La création de modèles tridimensionnels de villes à partir de données photographiques ou de relevés lasers de manière automatique est en plein essor. De nombreux acteurs, tels Google, Apple ou Microsoft, proposent de visualiser des villes et des bâtiments en trois dimensions avec leur logiciels de cartographie respectifs. Les problèmes soulevés sont nombreux. L'objectif initial consistant à obtenir un modèle précis et détaillé a été longuement étudié et de nombreuses techniques permettent d'obtenir des résultats satisfaisants.
 
-De nos jours, la diffusion de ces modèles se fait via Internet, voire même via les réseaux mobiles sur smartphones et tablettes. La vitesse de connexion peut fortement varier selon les cas d'utilisation. Il est alors crucial de réduire le poids du modèle créé tout en maintenant un niveau de détail suffisant, afin de permettre un téléchargement plus rapide du modèle. Il est nécessaire de simplifier intelligemment le modèle, en prenant en compte la géométrie et la topologie de la reconstruction. On parle alors de sémantisation du modèle. Avant de repérer des structures complexes, comme les types de bâtiments ou les détails architecturaux, la première étape consiste à identifier des primitives géométriques -- plans, cylindres, quadriques -- pour simplifier le modèle. Si des travaux existent à ce sujet, ils ne prennent pas en compte les spécificités des modèles 3D de villes, comme le manque de précision et le bruit ainsi que la variation de l'échantillonage au sein du modèle. La détection de plans va permettre réduire le poids du modèle.
+De nos jours, la diffusion de ces modèles se fait via l'Internet, voire via les réseaux mobiles sur smartphones et tablettes. La vitesse de connexion peut fortement varier selon les casd'utilisation. Il est alors crucial de réduire le poids du modèle créé tout en maintenant un niveau de détail suffisant, afin de permettre un téléchargement plus rapide du modèle. Il est nécessaire de simplifier intelligemment le modèle, en prenant en compte la géométrie et la topologie de la reconstruction. On parle alors de sémantisation du modèle.
+
+Avant de repérer des structures complexes, comme les types de bâtiments ou les détails architecturaux, la première étape consiste à identifier des primitives géométriques -- plans, cylindres, quadriques -- pour simplifier le modèle. Si des travaux existent à ce sujet, ils ne prennent pas en compte les spécificités des modèles 3D de villes, comme le manque de précision et le bruit ainsi que la variation de l'échantillonage au sein du modèle. La détection de plans va permettre de réduire le poids du modèle.
 
 L'objectif de ce stage est de développer un algorithme capable de détecter des plans dans un modèle 3D. Cette détection doit pouvoir s'adapter de manière automatique au modèle traité, que ce soit au niveau du bruit, de la précision ou de l'échelle. Il est aussi nécessaire que cette détection puisse être paramétrée, c'est à dire que l'utilisateur puisse définir une tolérance d'erreur pour les plans. L'algorithme doit ensuite créer les plans tout en conservant la topologie du modèle. Une étape de simplification est ensuite nécessaire pour réduire la taille du modèle obtenu. Cette étape de simplification doit prendre en compte la présence des plans afin de ne pas déformer ces derniers.
 \newpage
