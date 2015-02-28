@@ -304,9 +304,9 @@ Les critères de cohérence de facette et de calcul du plan sont détaillés dan
 
 \subsection{Implémentation}
 \label{subsec:growthimpl}
-L'implémentation de notre algorithme a été réalisée en \texttt{C++} ainsi qu'avec \texttt{OpenMP} pour la parallélisation.
+L'implémentation de notre algorithme a été réalisée en \texttt{C++} et avec \texttt{OpenMP} pour la parallélisation.
 
-La première partie de l'agorithme réside dans le calcul des informations de chaque facette. Durant cette phase, 3 valeurs sont calculées et attribuées à la facette : la normale, la normale étendue et la courbure. La normale est calculée simplement grâce à un produit vectoriel entre deux côtés de la facette. Le calcul de la courbure et de la normale étendue est détaillé en annexe. La principale difficulté de cette étape se trouve dans le parcours des points autour de la facette. Nous avons mis en place la méthode par récurrence suivante :
+La première partie de l'algorithme réside dans le calcul des informations de chaque facette. Durant cette phase, 3 valeurs sont calculées et attribuées à la facette : la normale, la normale étendue et la courbure. La normale est calculée simplement grâce à un produit vectoriel entre deux côtés de la facette. Le calcul de la courbure et de la normale étendue est détaillé en annexe. La principale difficulté de cette étape se trouve dans le parcours des points autour de la facette. Nous avons mis en place la méthode par récurrence suivante :
 \begin{itemize}
   \item La première couronne est constituée des 3 points de la facette ;
   \item Sachant que nous avons obtenu toutes les couronnes de $1$ à $n-1$, la couronne $n$ est composée des sommets adjacents à la couronne $n-1$ non encore visité.
@@ -325,7 +325,7 @@ XXX Images
 
 La deuxième phase de l'algorithme consiste à traiter les graines dans l'ordre de la liste. On note $g$ la graine sélectionnée, $p$ le plan engendré par la croissance de région, $E_p$ l'équation de ce plan, $l_{facettes}$ la liste des facettes contenues dans ce plan, $F$ l'ensemble des facettes disponibles.
 
-L'initialisation se fait comme suit. $g$ est sélectionnée. Le plan $p$ est créé et initialisé : $E_p$ est définie par la normale étendue de $g$ et passe par le barycentre de $g$. $g$ est ajoutée à $l_{facettes}$. On crée la queue $Q$ et on ajoute les trois facettes voisines de $g$.
+L'initialisation se fait comme suit : $g$ est sélectionnée. Le plan $p$ est créé et initialisé : $E_p$ est définie par la normale étendue de $g$ et passe par le barycentre de $g$. $g$ est ajoutée à $l_{facettes}$. On crée la queue $Q$ et on ajoute les trois facettes voisines de $g$.
 
 Ensuite, tant que $l_{facettes} < M$ et que $Q$ n'est pas vide, on sélectionne la première facette $q$ de $Q$. On vérifie si $q$ est consistante avec $p$. Les critères de consistance sont les suivants :
 \begin{itemize}
@@ -345,9 +345,9 @@ Lorsque $Q$ est vide, on calcule de nouveau $E_p$ en se basant sur $l_{facettes}
   \item $\text{courbure} < \text{\texttt{maxPlaneCurvature}}$ ;
   \item $\text{précision moyenne} < \text{\texttt{MAXIMUM\_ACCURACY}}$.
 \end{enumerate}
-Le premier critère utilise la distance moyenne. Pour cela on calcule simplement la moyenne de la distance de chaque barycentre de facette au plan. Le second critère correspond à la variance de ces points. Le troisième critère calcule la variance des normales étendues de chaque facette par rapport à la normale du plan, considérée comme la moyenne. Le quatrième critère calcule la courbure estimée du plan et vérifie qu'elle est inférieure à un seuil. Enfin le dernier critère se base sur les données de précisions fournies par \textit{Smart3DCapture} et permet de ne pas trouver de plan dans les zones trop peu précises.
+Le premier critère utilise la distance moyenne. Pour cela on calcule simplement la moyenne de la distance de chaque barycentre de facette au plan. Le second critère correspond à la variance de ces points. Le troisième critère calcule la variance des normales étendues de chaque facette par rapport à la normale du plan, considérée comme la moyenne. Le quatrième critère vérifie que la courbure estimée du plan est inférieure à un seuil. Enfin le dernier critère se base sur les données de précisions fournies par \textit{Smart3DCapture} et permet de ne pas trouver de plan dans les zones trop peu précises.
 
-Si le plan est cohérent, une deuxième passe est alors effectuée. Il s'agit d'ajouter les facettes voisines du plan avec des critères moins sévère que précédemment. On crée une nouvelle queue $Q_2$ qui est initialisée avec toutes les facettes voisines de $p$. La première facette $q$ de $Q_2$ est sélectionnée. Elle doit répondre aux deux critères suivants :
+Si le plan est cohérent, une deuxième passe est alors effectuée. Il s'agit d'ajouter les facettes voisines du plan avec des critères moins sévères que précédemment. On crée une nouvelle queue $Q_2$ qui est initialisée avec toutes les facettes voisines de $p$. La première facette $q$ de $Q_2$ est sélectionnée. Elle doit répondre aux deux critères suivants :
 \begin{enumerate}
   \item $\text{dist}(q, p) < \text{\texttt{Tolerance}}$ ;
   \item L'angle entre les normales de $q$ et $p$ est inférieur à 30 degrés.
@@ -360,9 +360,9 @@ Une dernière phase de dilatation/érosion a lieu pour combler les éventuels tr
 
 La liste des facettes du mesh est séparée en $c$ listes distinctes, $c$ correspondant au nombre de threads disponibles. Chacune de ces listes est traitée séparément par un thread.
 
-La première phase est la phase de dilatation. Le thread parcourt la liste. Pour chaque facette, la thread vérifie si elle est attribuée à un plan. Si elle ne l'est pas, on cherche si la facette est adjacente à un ou plusieurs plans. Dans ce cas, la facette est rattaché au plan le plus cohérent avec sa normale une fois toute la liste traitée. Cette phase de dilatation est répété autant de fois que nécessaire. Dans notre implémentation, nous appliquons cette dilatation deux fois.
+La première phase est la phase de dilatation. Le thread parcourt la liste. Pour chaque facette, le thread vérifie si elle est attribuée à un plan. Si elle ne l'est pas, on cherche si la facette est adjacente à un ou plusieurs plans. Dans ce cas, la facette est rattachée au plan le plus cohérent avec sa normale une fois toute la liste traitée. Cette phase de dilatation est répétée autant de fois que nécessaire. Dans notre implémentation, nous appliquons cette dilatation deux fois.
 
-La seconde phase est la phase d'érosion. Le thread parcourt de nouveau la liste de facettes. Si une facette est rattachée à un plan, on vérifie si elle a une voisine non-rattachée à un plan. Si tel est le cas, la facette est désattribuée une fois toute la liste traitée. Cette phase d'érosion est répété autant de fois que la phase de dilation. La figure~\ref{fig:DilEro} illustre les phases de dilatation et d'érosion.
+La seconde phase est la phase d'érosion. Le thread parcourt de nouveau la liste de facettes. Si une facette est rattachée à un plan, on vérifie si elle a une voisine non-rattachée à un plan. Si tel est le cas, la facette est désattribuée une fois toute la liste traitée. Cette phase d'érosion est répétée autant de fois que la phase de dilation. La figure~\ref{fig:DilEro} illustre les phases de dilatation et d'érosion.
 
 \begin{figure}[h]
 \centering
@@ -372,7 +372,7 @@ La seconde phase est la phase d'érosion. Le thread parcourt de nouveau la liste
 \caption{\label{fig:DilEro} Étapes de dilatation/érosion}
 \end{figure}
 
-Les plans sont désormais détectés. La figure~\ref{fig:resultPlan} illuste le résultat de cette détection. Il faut maintenant modifier la géométrie du modèle pour faire apparaitre ces plans.
+Les plans sont désormais détectés. La figure~\ref{fig:resultPlan} illustre le résultat de cette détection. Il faut maintenant modifier la géométrie du modèle pour faire apparaitre ces plans.
 
 \begin{figure}[h]
 \centering
@@ -382,7 +382,7 @@ Les plans sont désormais détectés. La figure~\ref{fig:resultPlan} illuste le 
 
 \section{Maillage}
 \subsection{Problématique}
-Maintenant que les plans sont détectés, il faut projetés les points sur ces plans, afin d'obtenir la géométrie voulue. Cependant, une simple projection directe des points sur les plans, les arêtes ou les coins engendre de mauvais résultats. La topologie du mesh est \textit{cassée} par la projection, comme en témoigne la figure~\ref{fig:probproj}.
+Maintenant que les plans sont détectés, il faut projeter les points sur ces plans, afin d'obtenir la géométrie voulue. Cependant, une simple projection directe des points sur les plans, les arêtes ou les coins engendre de mauvais résultats. La topologie du mesh est \textit{cassée} par la projection, comme en témoigne la figure~\ref{fig:probproj}.
 
 \begin{figure}[h]
 \centering
@@ -396,9 +396,9 @@ Il est donc nécessaire de traiter le nuage de points pour éviter ce genre d'er
 La première étape consiste à traiter correctement les points du mesh dans lequel les plans viennent d'être détectés. Pour cela, nous distinguons 4 types de points :
 \begin{enumerate}
   \item Neutre -- aucune des facettes autour du point n'est attribuée à un plan ;
-  \item Plan -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a qu'un seul même plan parmi les facette attribuées ;
-  \item Arête -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a que deux plans parmi les facette attribuées ;
-  \item Coin -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a au moins trois plans parmi les facette attribuées.
+  \item Plan -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a qu'un seul même plan parmi les facettes attribuées ;
+  \item Arête -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a que deux plans parmi les facettes attribuées ;
+  \item Coin -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a au moins trois plans parmi les facettes attribuées.
 \end{enumerate}
 
 \paragraph{Projection des points} Les points \textit{Neutre} ne sont pas déplacés. Les points \textit{Plan} sont projetés sur leur plan.
@@ -420,17 +420,17 @@ Les trois premiers critères servent à vérifier si chaque couple de plans form
 
 Si tous les critères sont vérifiés, on enregistre la position de l'intersection. Sinon on enregistre le barycentre des projections du point sur chaque plan. Une fois chaque triplet traité, on calcule le barycentre de chaque position obtenue et on déplace le point traité sur ce barycentre.
 
-Cette étape permet de projeter correctement les points sur les plans. Cependant, ces précautions ne sont pas suffisantes pour ne pas casser la topologie du maillage. Nous allons introduire et retirer des points afin de préparer une nouvelle triangulation du nuage de points, dans le but d'obtenir un maillage correct.
+Cette étape permet de projeter correctement les points sur les plans. Cependant, ces précautions ne sont pas suffisantes pour respecter la topologie du maillage. Nous allons introduire et retirer des points afin de préparer une nouvelle triangulation du nuage de points, dans le but d'obtenir un maillage correct.
 
 \paragraph{Échantillonage des arêtes} Nous introduisons des points le long des arêtes afin de faciliter le maillage le long de ces arêtes. Les arêtes sont détectées lors de la phase de projection. Lorsque un point de type \textit{Arête} ou \textit{Coin} est projeté sur l'arête ou l'intersection, alors ce point est ajouté à un objet \texttt{Ridge} correspondant à l'arête entre deux plans. Une fois tous les points ajoutés, on traite chaque arête. Les points des arêtes sont classés selon le vecteur directeur de l'arête. Cette dernière est ensuite séparée en \textit{chunks} : l'arête n'est pas forcément continue et un échantillonage naïf introduirait des défauts dans le modèle.
 
-Une fois l'arête traitée, on échantillone chaque \textit{chunk}. La distance d'échantillonange est determinée par la distance moyenne entre chaque point de l'arête. Un point est ajouté sur l'arête toutes les demi-distance moyenne. Sachant que l'on garde les points déjà présents sur l'arête, le nombre de points est triplé.
+Une fois l'arête traitée, on échantillone chaque \textit{chunk}. La distance d'échantillonage est determinée par la distance moyenne entre chaque point de l'arête. Un point est ajouté sur l'arête toutes les demi-distances moyennes. Sachant que l'on garde les points déjà présents sur l'arête, le nombre de points est triplé.
 
 \paragraph{Retrait des points incorrects} La projection des sommets a comme effet de replier la surface sur elle-même -- figure~\ref{fig:probproj} -- et ce malgré les précautions prises auparavant. Il convient donc de retirer les points qui posent problème.
 
 La première étape consiste à repérer les sommets où la surface se replie. On cherche ainsi les points de type \textit{Plan}. Parmi ces points, on retient ceux qui ont au moins deux facettes dont la normale est inversée, c'est-à-dire tel que $n_{f_{1}} \cdot n_{f_{2}} = -1$ si les normales sont normalisées.
 
-La seconde étape consiste à identifier les points qui se trouvent dans une zone où la surface est replié. Pour cela, la méthode la plus efficace est de tester si un point \textit{tombe au milieu} d'une autre facette. Soit $a$, $b$ et $c$ les trois sommets d'une facette. Sachant que l'on travaille en 2D -- le plan est déjà projeté -- on identifie un point $p$ au milieu d'une facette de la manière suivante :
+La seconde étape consiste à identifier les points qui se trouvent dans une zone où la surface est repliée. Pour cela, la méthode retenue car la plus efficace est de tester si un point \textit{tombe au milieu} d'une autre facette. Soit $a$, $b$ et $c$ les trois sommets d'une facette. Sachant que l'on travaille en 2D -- le plan est déjà projeté -- on identifie un point $p$ au milieu d'une facette de la manière suivante :
 $$n_A = (b-a)\wedge(p-a) ; n_B = (c-b)\wedge(p-b) ; n_C = (a-c)\wedge(p-c)$$
 $$\text{Si }n_A\cdot n_B > 0 \text{ et } n_A\cdot n_C > 0 \text{ et } n_B\cdot n_C > 0 \text{ alors le point est au milieu de la facette.}$$
 Cette méthode reste lente car il faut vérifier pour chaque point d'un plan l'ensemble des facettes. Pour accélérer le traitement, cette phase est effectuée en parallèle et le choix des plans est affiné au fil des étapes. Ainsi, si aucun point d'un plan n'a été détecté dans la première étape, alors la seconde étape n'est pas appliquée à ce plan.
@@ -444,17 +444,17 @@ Désormais, nous avons tous les élèments en main pour créer le nouveau mailla
 \subsection{Maillage du nuage de points}
 Pour mailler ce nuage de points, nous reprenons les méthodes utilisées par \textit{Smart3DCapture}. Le maillage du nuage de points est largement inspiré de \cite{maillage1}. Afin de s'adapter à la spécificité de notre modèle avec plans, notre méthode s'inspire aussi de \cite{maillage2}.
 
-\cite{maillage1} présente une méthode pour obtenir une surface à partir d'un nuage de point et d'informations de visibilité. On effecture d'abord une triangulation 3D du nuage de points. Ensuite, chaque tétrahèdre -- appelé aussi cellule -- est traité à l'aide des informations de visibilités. Le but est de déterminée si la cellule est à l'intérieur de la surface ou à l'extérieur de la surface. Pour chaque cellule, des scores sont calculées. Des coûts sont aussi calculées entre les faces de chaque cellule. La surface est ensuite extraite à l'aide d'un \textit{graphcut}. Le \textit{graphcut} est un algorithme de coupe minimale. Le but est d'obtenir la surface qui sépare les cellules en deux parties distinctes avec un score minimal. Des dispositions sont prises afin d'éviter la solution triviale de la surface vide.
+\cite{maillage1} présente une méthode pour obtenir une surface à partir d'un nuage de point et d'informations de visibilités. On effectue d'abord une triangulation 3D du nuage de points. Ensuite, chaque tétraèdre -- appelé aussi cellule -- est traité à l'aide des informations de visibilités. Le but est de déterminer si la cellule est à l'intérieur ou à l'extérieur de la surface. Pour chaque cellule, des scores sont calculés. Des coûts sont aussi calculés entre les faces de chaque cellule. La surface est ensuite extraite à l'aide d'un \textit{graphcut}. Le \textit{graphcut} est un algorithme de coupe minimale. Le but est d'obtenir la surface qui sépare les cellules en deux parties distinctes avec un score minimal. Des dispositions sont prises afin d'éviter la solution triviale de la surface vide.
 
 Nous réutilisons cette technique du \textit{graphcut} mais nous calculons de nouveaux coûts, plus adaptés à notre mesh.
 
-\paragraph{Coût des cellules} Le coût des cellules doit refléter la propriété de la position de la cellule par rapport à la surface, c'est-à-dire est-ce que la cellule se trouve à l'intérieur ou à l'extérieur de la surface. Pour évaluer cette propriété, nous nous basons sur les normales de chaque point. De manière intuitive, si les quatre normales d'une cellule pointent vers l'intérieur de la cellule, c'est que cette dernière est à l'extérieur de la surface. De la même façon, si les quatre normales pointent vers l'extérieur, la cellule se trouve à l'intérieur de la surface -- figure~\ref{fig:inout}.
+\paragraph{Coût des cellules} Le coût des cellules doit refléter la propriété de la position de la cellule par rapport à la surface, autrement dit la présence de la cellule à l'intérieur ou à l'extérieur de la surface. Pour évaluer cette propriété, nous nous basons sur les normales de chaque point. De manière intuitive, si les quatre normales d'une cellule pointent vers l'intérieur de la cellule, c'est que cette dernière est à l'extérieur de la surface. De la même façon, si les quatre normales pointent vers l'extérieur, la cellule se trouve à l'intérieur de la surface -- figure~\ref{fig:inout}.
 
 XXX FIGURE IN OUT
 
 Le score de la cellule est calculé à l'aide de son barycentre $b$. Pour chaque sommet -- $s_1, s_2, s_3, s_4$ -- on calcule le produit scalaire $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert}$ et on l'ajoute au score. Si $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert} > 0.3$, on ajoute $1$ au score. Si $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert} < -0.3$, on retranche $1$ au score. Les cellules à l'intérieur ont un score négatif et celles à l'extérieur un score positif. Le seuil de $\pm 0.3$ permet de favoriser les normales qui caractérisent vraiment la cellule par rapport aux normales plus ambiguës.
 
-\paragraph{Coût des facettes} \cite{maillage2} introduit un coût pour les facettes prenant en compte les plans détectés. L'idée générale est d'empêcher le \textit{graphcut} de passer par une facette qui serait incohérente vis-à-vis de la géométrie détectée. Plusieurs catégories de facettes sont introduites :
+\paragraph{Coût des facettes} \cite{maillage2} introduit un coût pour les facettes prenant en compte les plans détectés. Le principe générale est d'empêcher le \textit{graphcut} de passer par une facette qui serait incohérente vis-à-vis de la géométrie détectée. Plusieurs catégories de facettes sont introduites :
 \begin{enumerate}
   \item Facette dite \textit{Free-form coherent}. Ce sont les facettes avec 0, 1 ou 2 points de type \textit{Plan} appartenant au même plan.
   \item Facette dite \textit{Structurally coherent}. Ce sont les facettes avec :
@@ -479,7 +479,7 @@ La figure~\ref{fig:coherence} illustre ces catégories.
 
 Dans notre implémentation, nous avons rajouté un septième type de facette \textit{Structurally coherent}. Il s'agit d'une facette composée de 2 points de type \textit{Arête} reliés aux plans $i$ et $j$ et d'un point de type \textit{Arête} reliés aux plans $j$ et $k$. Ce type de facette est nécessaire pour mailler correctement un plan qui se termine en pointe fine.
 
-Selon la catégorie de la facette, le coût ne sera pas le même. Les facettes \textit{Structurally coherent} ont un coût nul. Les facettes \textit{Free-form coherent} entraîne un coût léger, alors que les facettes non-cohérente entraîne un coût élevé. Le but est d'empécher la surface de passer par ces facettes. Si le coût est trop élevé, la surface ne passera pas par cette facette.
+Selon la catégorie de la facette, le coût ne sera pas le même. Les facettes \textit{Structurally coherent} ont un coût nul. Les facettes \textit{Free-form coherent} entraînent un coût léger, alors que les facettes \textit{not coherent} entraînent un coût élevé. L'objectif est d'empécher la surface de passer par ces facettes. Si le coût est trop élevé, la surface ne passera pas par cette facette.
 
 Le coût des cellules permet surtout d'obtenir une surface similaire à celle d'origine dans les zones non planaires. La figure~\ref{fig:comparo} illustre la faible différence entre le maillage d'origine et le maillage recalulé.
 
@@ -491,9 +491,9 @@ Le coût des cellules permet surtout d'obtenir une surface similaire à celle d'
 
 Le coût des facettes permet d'éviter une mauvaise triangulation, notamment lorsque deux plans se trouvent côte à côte. La figure~\ref{fig:avap} montre la différence entre l'ancien maillage et le nouveau maillage.
 
-À noter que lors de l'extraction de la surface, on obtient de larges facettes incohérentes avec la scène. Avant de les traiter, on se base sur l'échantillonage de chaque point. Si un point est relié est reliée à une arête dont la longueur est largement supérieure à la distance d'échantillonage du point, alors la facette est rétirée. Cette étape de filtrage est surtout utile au niveau des bords du modèle.
+À noter que lors de l'extraction de la surface, on obtient de larges facettes incohérentes avec la scène. Avant de les traiter, on se base sur l'échantillonage de chaque point. Si un point est relié à une arête dont la longueur est largement supérieure à la distance d'échantillonage du point, alors la facette est rétirée. Cette étape de filtrage est surtout utile au niveau des bords du modèle.
 
-Le maillage est désormais cohérent avec la scène. Il est désormais nécessaire de le simplifier afin de réduire le poids du modèle.
+Le maillage est désormais cohérent avec la scène. Il est maintenant nécessaire de le simplifier afin de réduire le poids du modèle.
 
 \begin{figure}[h]
 \centering
@@ -506,7 +506,7 @@ Le maillage est désormais cohérent avec la scène. Il est désormais nécessai
 Les modèles obtenus après le remaillage sont extrêmement détaillés, autant dans les parties planes que dans les parties non-planes. Il est nécessaire que notre algorithme de simplification puisse s'adapter autant aux parties planes qu'aux parties présentant des détails fins. Il faut aussi que cet algorithme conserve la planarité des plans détectés.
 
 \subsection{Simplification existante et limitations}
-Actuellement, \textit{Smart3DCapture} utilise un algorithme de simplification basé sur un mécanisme d'\textit{edge collapse}. Cet algorithme provient de la librairie \texttt{CGAL} et son implémentation provient majoritairement de \cite{simp1, simp2}. L'idée de l'algorithme est de fusionner certains sommets entre eux pour réduire le nombre de facettes tout en conservant au mieux la géométrie du modèle.
+Actuellement, \textit{Smart3DCapture} utilise un algorithme de simplification basé sur un mécanisme d'\textit{edge collapse}. Cet algorithme provient de la librairie \texttt{CGAL} et son implémentation provient majoritairement de \cite{simp1, simp2}. Le principe de l'algorithme est de fusionner certains sommets entre eux pour réduire le nombre de facettes tout en conservant au mieux la géométrie du modèle.
 
 Pour chaque sommet, une quadrique est calculée. La quadrique correspond à l'ensemble des 10 paramètres décrivant la surface localement autour du point. Pour chaque arête, on calcule le point qui minimise l'erreur de quadrique lorsque l'arête est supprimée ainsi que le coût de cette erreur. Si le déplacement du point est trop important, on utilise plutôt le placement de Lindstrom-Turk \cite{simp2}. Ensuite, on traite les arêtes par ordre croissant de coût : on simplifiera d'abord les zones où le coût de déplacement est faible. La simplification s'arrête une fois que la somme des erreurs dépasse un certain seuil.
 
@@ -521,7 +521,7 @@ La figure~\ref{fig:simpl1} expose le problème de l'algorithme de simplification
 \subsection{Modifications}
 Nous avons modifié l'algorithme de simplification pour tenir compte des spécificités de notre maillage.
 
-La première modification concerne le placement. Lorsque le placement optimal est calculé, nous voulons être certains que le placement est cohérent par rapport au maillage initial. Pour cela, le point obtenu via placement optimal est ensuite projeté sur le plan, l'arête ou le coin associé. Cette nouvelle projection nous permet d'être certains que la géométrie des plans et des arêtes est respectée.
+La première modification concerne le placement. Lorsque le placement optimal est calculé, nous voulons être certain que le placement est cohérent par rapport au maillage initial. Pour cela, le point obtenu via le placement optimal est ensuite projeté sur le plan, l'arête ou le coin associé. Cette nouvelle projection nous permet d'être certain que la géométrie des plans et des arêtes est respectée.
 
 La seconde modification concerne l'estimation du coût de déplacement. Lorsque l'un des points fusionnés est intégralement entouré de facettes assignées à un plan, alors on estime que le coût du déplacement doit être nul. Si le coût n'est pas nul, alors on modifie ce coût à un coût infini. Cela signifie que nous voulons que la simplification n'entraîne aucune perte de précision.
 
@@ -536,7 +536,7 @@ Un coût particulier est aussi créé pour les bordures du maillage qui sont pla
 La figure~\ref{fig:simpl2} montre l'amélioration du maillage à l'aide de notre méthode. La modification du placement donne de plus de meilleurs résultats sur les bordures des plans.
 
 \section{Résultats}
-\subsection{Niveaux de simplifications}
+\subsection{Niveaux de simplification}
 \subsection{Temps d'éxécution}
 \subsection{Gain de place}
 \subsection{Problèmes existants}
