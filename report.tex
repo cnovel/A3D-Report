@@ -1,4 +1,4 @@
-\documentclass[12pt, twoside]{article}
+﻿\documentclass[12pt, twoside]{article}
 \usepackage[left=2.5cm,right=2cm,top=2cm,bottom=2cm]{geometry}
 
 \usepackage{lastpage}
@@ -100,6 +100,17 @@ Renaud \textsc{Keriven}
 
 \newpage
 \begin{abstract}
+<<<<<<< HEAD
+=======
+Dans ce rapport,
+
+nous proposons ensuite de sémantiser à l'aide de plans
+
+2 OK
+
+pour ce type d'application et pas genre
+
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 \end{abstract}~\\[5cm]
 \addcontentsline{toc}{section}{Résumé}
 Face au développement de l'internet mobile et de l'intérêt pour les modèles 3D lourds comme ceux des villes ou des bâtiments, il est devenu nécessaire de les alléger. La semantisation de ces modèles va permettre leur simplification. Cette sémantisation doit s'effectuer à l'aide de plans.
@@ -121,9 +132,15 @@ Je voudrais remercier mon superviseur Renaud Keriven, qui a su dirigé mes effor
 \section*{Introduction}
 \addcontentsline{toc}{section}{Introduction}
 La création de modèles tridimensionnels de villes à partir de données photographiques ou de relevés lasers de manière automatique est en plein essor. De nombreux acteurs, tels Google, Apple ou Microsoft, proposent de visualiser des villes et des bâtiments en trois dimensions avec leur logiciels de cartographie respectifs. Les problèmes soulevés sont nombreux. L'objectif initial consistant à obtenir un modèle précis et détaillé a été longuement étudié et de nombreuses techniques permettent d'obtenir des résultats satisfaisants.
+<<<<<<< HEAD
 
 De nos jours, la diffusion de ces modèles se fait via l'Internet, voire via les réseaux mobiles sur smartphones et tablettes. La vitesse de connexion peut fortement varier selon les casd'utilisation. Il est alors crucial de réduire le poids du modèle créé tout en maintenant un niveau de détail suffisant, afin de permettre un téléchargement plus rapide du modèle. Il est nécessaire de simplifier intelligemment le modèle, en prenant en compte la géométrie et la topologie de la reconstruction. On parle alors de sémantisation du modèle.
 
+=======
+
+De nos jours, la diffusion de ces modèles se fait via l'Internet, voire via les réseaux mobiles sur smartphones et tablettes. La vitesse de connexion peut fortement varier selon les casd'utilisation. Il est alors crucial de réduire le poids du modèle créé tout en maintenant un niveau de détail suffisant, afin de permettre un téléchargement plus rapide du modèle. Il est nécessaire de simplifier intelligemment le modèle, en prenant en compte la géométrie et la topologie de la reconstruction. On parle alors de sémantisation du modèle.
+
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 Avant de repérer des structures complexes, comme les types de bâtiments ou les détails architecturaux, la première étape consiste à identifier des primitives géométriques -- plans, cylindres, quadriques -- pour simplifier le modèle. Si des travaux existent à ce sujet, ils ne prennent pas en compte les spécificités des modèles 3D de villes, comme le manque de précision et le bruit ainsi que la variation de l'échantillonage au sein du modèle. La détection de plans va permettre de réduire le poids du modèle.
 
 L'objectif de ce stage est de développer un algorithme capable de détecter des plans dans un modèle 3D. Cette détection doit pouvoir s'adapter de manière automatique au modèle traité, que ce soit au niveau du bruit, de la précision ou de l'échelle. Il est aussi nécessaire que cette détection puisse être paramétrée, c'est à dire que l'utilisateur puisse définir une tolérance d'erreur pour les plans. L'algorithme doit ensuite créer les plans tout en conservant la topologie du modèle. Une étape de simplification est ensuite nécessaire pour réduire la taille du modèle obtenu. Cette étape de simplification doit prendre en compte la présence des plans afin de ne pas déformer ces derniers.
@@ -131,11 +148,19 @@ L'objectif de ce stage est de développer un algorithme capable de détecter des
 
 \section{Détection de plans}
 \subsection{Problématique}
+<<<<<<< HEAD
 Détecter des plans est la première étape de notre algorithme global. Avant tout, il a fallu choisir l'objet qui allait être traité. Le logiciel \textit{Smart3DCapture} génère plusieurs objets tout au long de la chaîne de traitement. Un nuage de point bruité est généré, suivi par un maillage 3D grossier et ensuite d'un maillage 3D précis. Il aurait été possible d'extraire des plans du nuage bruité. Cependant des détails -- fenêtres, cheminées -- auraient été confondus avec un plan. Il a donc été décidé d'extraire des plans à partir du maillage 3D précis.
 
 Le maillage possède aussi un avantage certain sur le nuage de points. De nombreuses informations sont plus simples et plus rapides à calculer grâce à la connectivité du maillage. L'estimation de l'échantillonage devient triviale, de même que l'estimation de la normale.
 
 Par la suite, nous détaillons les algorithmes les plus courantes pour extraire des plans d'un nuage de points ou d'un maillage. Nous aborderons l'algorithme \textit{RANSAC}, la transformée de Hough et la croissance de région.
+=======
+Détecter des plans est la première étape de notre algorithme global. Avant tout, il a fallu choisir l'objet qui allait être traité. Le logiciel \textit{Smart3DCapture} génère plusieurs objets tout au long de la chaîne de traitement. Un nuage de points bruité est généré, suivi par un maillage 3D grossier et ensuite d'un maillage 3D précis. Il aurait été possible d'extraire des plans du nuage bruité. Cependant des détails -- fenêtres, cheminées -- auraient êté confondus avec un plan. Il a donc été décidé d'extraire des plans à partir du maillage 3D précis.
+
+Le maillage possède aussi un avantage certain sur le nuage de points. De nombreuses informations sont plus simples et plus rapides à calculer grâce à la connectivité du maillage. L'estimation de l'échantillonage devient triviale, de même que l'estimation de la normale.
+
+Par la suite, nous détaillons les algorithmes les plus courants pour extraire des plans d'un nuage de points ou d'un maillage. Nous aborderons l'algorithme \textit{RANSAC}, la transformée de Hough et la croissance de région.
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 
 \subsection{RANSAC}
 Le \textit{RANSAC} -- \textit{RANdom SAmple Consensus} -- est un algorithme itératif non déterministe. Soit un nuage de points $C$. À chaque itération de l’algorithme, on choisit un nombre $p$ de points au sein du nuage de points de manière aléatoire. On note $S$ cet ensemble. On calcule alors le meilleur plan pour cet ensemble de points, c’est à dire le plan qui minimise la somme des distances au carré de points à ce plan -- cf annexe~\ref{annexe}. Une fois le plan trouvé, on parcourt les points de $C\setminus S$. Si le point correspond au plan avec une certaine erreur $d$, on l’ajoute à l’ensemble $S$. Une fois l’ensemble des points de $C\setminus S$ parcouru, on recalcule le meilleur plan pour l’ensemble $S$. Si le plan est meilleur que celui de l’itération précédente -- la somme des distances au carré est plus faible, alors on le considère comme le meilleur plan courant. Sinon le plan de l’itération précédente reste le meilleur plan courant. On procède ainsi pendant $k$ itérations, $k$ étant fixé à l’avance. Une fois le meilleur plan trouvé, $C$ = $C\setminus S$ et on effectue un nouveau \textit{RANSAC} sur $C$ pour trouver le prochain plan. Il est possible de s’arrêter avant la $k$ème itération si une itération est suffisamment bonne, c’est à dire que l’erreur est suffisamment faible.
@@ -241,8 +266,16 @@ Notre objectif est de traiter des maillages très grands -- 2 millions de points
 
 Un algorithme basé sur la transformée de Hough ne nous apparait pas le plus efficient pour détecter les plans. Nous devons traiter des nuages de points contenant parfois deux millions de points. L'accumulateur nécessaire à la détection de plandoit être discrétisé finement : la place occupée en mémoire va être très importante. La détection sera lente et compliquée. Nous rencontrons le même écueil qu'avec \textit{RANSAC} : il est difficile de choisir une taille minimale de plans. La transformée de Hough ne permet pas non plus de détecter deux plans possédant la même équation mais séparés dans l'espace. C'est pourquoi cette méthode n'a pas été retenue. 
 
+le plus propice -> le plus efficient pour détecter les plans.
+
+à finir...
+
 \subsection{Croissance de région}
+<<<<<<< HEAD
 La croissance de région -- \textit{region growing} -- est une approche gloutonne de la détection de plan. L’idée de base est de partir d’un point graine et d’ajouter tous ses proches voisins, tant que ces voisins respectent l’équation du plan initial. Une méthode basique est présentée dans \cite{reggrow1}. On choisit 3 points du nuage de points qui se trouvent dans une sphère de rayon $r$. Ces trois plans initialisent le plan optimal $\Pi$ et le set de points $S$. Ensuite, on cherche le point $p$ tel que
+=======
+La croissance de région -- \textit{region growing} -– est une approche gloutonne de la détection de plan. L’idée de base est de partir d’un point graine et d’ajouter tous ses proches voisins, tant que ces voisins respectent l’équation du plan initial. Une méthode basique est présentée dans \cite{reggrow1}. On choisit 3 points du nuage de points qui se trouvent dans une sphère de rayon $r$. Ces trois plans initialisent le plan optimal $\Pi$ et le set de points $S$. Ensuite, on cherche le point $p$ tel que
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 \begin{itemize}
   \item $p$ est le plus proche voison de $S$ ;
   \item $\text{dist}(S,p) < \delta$ ;
@@ -261,7 +294,11 @@ La principale difficulté de la croissance de région est de sélectionner corre
 \end{itemize}
 Le premier critère assure que la région est suffisamment peuplée, et qu’une recherche dans ce voisinage est intéressante. Le second critère assure un semblant de plan. Il évite de débuter une séquence de croissance alors qu’il n’y a que peu de chance que la région considérée soit un plan. On estime la planarité du voisinage de la même manière que précédemment.
 
+<<<<<<< HEAD
 Une autre méthode est décrite dans \cite{reggrow3} pour trouver des plans via la croissance de régions. Il s'agit dans un premier temps de calculer la normale de chaque point ainsi que la courbure à chaque point. Ces deux variables sont obtenues via une \textit{Principal Components Analysis} décrite en annexe~\ref{annexe}. Les points sont ensuite filtrés selon leur courbure $\gamma$ : si $\gamma < S_c$, alors le point est considéré comme graine. Les graines sont classées par ordre croissant de courbure. Ensuite les graines sont répartis sur la sphère unité selon leur normale. Une étape de clustering est ensuite appliquée :
+=======
+Une autre méthode est décrite dans \cite{reggrow3} pour trouver des plans via la croissance de régions. Il s'agit dans un premier temps de calculer la normale de chaque point ainsi que la courbure à chaque point. Ces deux variables sont obtenues via une \textit{Principal Components Analysis} décrite en annexe. Les points sont ensuite filtrés selon leur courbure $\gamma$ : si $\gamma < S_c$, alors le point est considéré comme graine. Les graines sont classées par ordre croissant de courbure. Ensuite les graines sont réparties sur la sphère unité selon leur normale. Une étape de clustering est ensuite appliquée :
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 \begin{itemize}
   \item La graine avec la courbure la plus faible $g$ est choisie et le cluster $C$ est initialisé avec $g$ ;
   \item On ajoute au cluster $C$ les points $p$ tel que $n_p\cdot n_g \approx 1$ et tel que $\text{max}\{n_p\cdot(p-g), n_g\cdot(p-g)\}$ est proche de 0 -- c'est-à-dire $p-q$ orthogonal à la normal du plan ;
@@ -301,7 +338,11 @@ Les critères de cohérence de facette et de calcul du plan sont détaillés dan
 \label{subsec:growthimpl}
 L'implémentation de notre algorithme a été réalisée en \texttt{C++} et avec \texttt{OpenMP} pour la parallélisation.
 
+<<<<<<< HEAD
 La première partie de l'agorithme réside dans le calcul des informations de chaque facette. Durant cette phase, 3 valeurs sont calculées et attribuées à la facette : la normale, la normale étendue et la courbure. La normale est calculée simplement grâce à un produit vectoriel entre deux côtés de la facette. Le calcul de la courbure et de la normale étendue est détaillé en annexe~\ref{annexe}. La principale difficulté de cette étape se trouve dans le parcours des points autour de la facette. Nous avons mis en place la méthode par récurrence suivante :
+=======
+La première partie de l'algorithme réside dans le calcul des informations de chaque facette. Durant cette phase, 3 valeurs sont calculées et attribuées à la facette : la normale, la normale étendue et la courbure. La normale est calculée simplement grâce à un produit vectoriel entre deux côtés de la facette. Le calcul de la courbure et de la normale étendue est détaillé en annexe. La principale difficulté de cette étape se trouve dans le parcours des points autour de la facette. Nous avons mis en place la méthode par récurrence suivante :
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 \begin{itemize}
   \item La première couronne est constituée des 3 points de la facette ;
   \item Sachant que nous avons obtenu toutes les couronnes de $1$ à $n-1$, la couronne $n$ est composée des sommets adjacents à la couronne $n-1$ non encore visité.
@@ -336,7 +377,11 @@ Lorsque $Q$ est vide, on calcule de nouveau $E_p$ en se basant sur $l_{facettes}
   \item $\text{courbure} < \text{\texttt{maxPlaneCurvature}}$ ;
   \item $\text{précision moyenne} < \text{\texttt{MAXIMUM\_ACCURACY}}$.
 \end{enumerate}
+<<<<<<< HEAD
 Le premier critère utilise la distance moyenne et vérifie qu'elle est inférieure à un seuil. Pour cela on calcule simplement la moyenne de la distance de chaque barycentre de facette au plan. Le second critère vérifie que la variance de ces points est inférieure à un seuil. Le troisième vérifie que la variance des normales étendues est inférieure à un seuil. La variance est calculée par rapport à la normale du plan, considérée comme la moyenne. Le quatrième critère vérifie que la courbure estimée du plan est inférieure à un seuil. Enfin le dernier critère se base sur les données de précisions fournies par \textit{Smart3DCapture} et permet de ne pas trouver de plan dans les zones trop peu précises.
+=======
+Le premier critère utilise la distance moyenne. Pour cela on calcule simplement la moyenne de la distance de chaque barycentre de facette au plan. Le second critère correspond à la variance de ces points. Le troisième critère calcule la variance des normales étendues de chaque facette par rapport à la normale du plan, considérée comme la moyenne. Le quatrième critère vérifie que la courbure estimée du plan est inférieure à un seuil. Enfin le dernier critère se base sur les données de précisions fournies par \textit{Smart3DCapture} et permet de ne pas trouver de plan dans les zones trop peu précises.
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 
 Si le plan est cohérent, une deuxième passe est alors effectuée. Il s'agit d'ajouter les facettes voisines du plan avec des critères moins sévères que précédemment. On crée une nouvelle queue $Q_2$ qui est initialisée avec toutes les facettes voisines de $p$. La première facette $q$ de $Q_2$ est sélectionnée. Elle doit répondre aux deux critères suivants :
 \begin{enumerate}
@@ -387,9 +432,9 @@ Il est donc nécessaire de traiter le nuage de points pour éviter ce genre d'er
 La première étape consiste à traiter correctement les points du mesh dans lequel les plans viennent d'être détectés. Pour cela, nous distinguons 4 types de points :
 \begin{enumerate}
   \item Neutre -- aucune des facettes autour du point n'est attribuée à un plan ;
-  \item Plan -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a qu'un seul même plan parmi les facette attribuées ;
-  \item Arête -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a que deux plans parmi les facette attribuées ;
-  \item Coin -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a au moins trois plans parmi les facette attribuées.
+  \item Plan -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a qu'un seul même plan parmi les facettes attribuées ;
+  \item Arête -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a que deux plans parmi les facettes attribuées ;
+  \item Coin -- il y a au moins une facette attribuée à un plan autour du point, et il n'y a au moins trois plans parmi les facettes attribuées.
 \end{enumerate}
 
 \paragraph{Projection des points} Les points \textit{Neutre} ne sont pas déplacés. Les points \textit{Plan} sont projetés sur leur plan.
@@ -449,7 +494,11 @@ Nous réutilisons cette technique du \textit{graphcut} mais nous calculons de no
 
 Le score de la cellule est calculé à l'aide de son barycentre $b$. Pour chaque sommet -- $s_1, s_2, s_3, s_4$ -- on calcule le produit scalaire $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert}$ et on l'ajoute au score. Si $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert} > 0.3$, on ajoute $1$ au score. Si $\dfrac{n_i\cdot(b-s_i)}{\Vert b-s_i\Vert} < -0.3$, on retranche $1$ au score. Les cellules à l'intérieur ont un score négatif et celles à l'extérieur un score positif. Le seuil de $\pm 0.3$ permet de favoriser les normales qui caractérisent vraiment la cellule par rapport aux normales plus ambiguës.
 
+<<<<<<< HEAD
 \paragraph{Coût des facettes} \cite{maillage2} introduit un coût pour les facettes prenant en compte les plans détectés. Le principe général est d'empêcher le \textit{graphcut} de passer par une facette qui serait incohérente vis-à-vis de la géométrie détectée. Plusieurs catégories de facettes sont introduites :
+=======
+\paragraph{Coût des facettes} \cite{maillage2} introduit un coût pour les facettes prenant en compte les plans détectés. Le principe générale est d'empêcher le \textit{graphcut} de passer par une facette qui serait incohérente vis-à-vis de la géométrie détectée. Plusieurs catégories de facettes sont introduites :
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 \begin{enumerate}
   \item Facette dite \textit{Free-form coherent}. Ce sont les facettes avec 0, 1 ou 2 points de type \textit{Plan} appartenant au même plan.
   \item Facette dite \textit{Structurally coherent}. Ce sont les facettes avec :
@@ -516,7 +565,11 @@ La figure~\ref{fig:simpl1} expose le problème de l'algorithme de simplification
 \subsection{Modifications}
 Nous avons modifié l'algorithme de simplification pour tenir compte des spécificités de notre maillage.
 
+<<<<<<< HEAD
 La première modification concerne le placement. Lorsque le placement optimal est calculé, nous voulons être certain que le placement est cohérent par rapport au maillage initial. Pour cela, le point obtenu via le placement optimal est ensuite projeté sur le plan, l'arête ou le coin associé. Cette nouvelle projection nous permet d'être certains que la géométrie des plans et des arêtes est respectée.
+=======
+La première modification concerne le placement. Lorsque le placement optimal est calculé, nous voulons être certain que le placement est cohérent par rapport au maillage initial. Pour cela, le point obtenu via le placement optimal est ensuite projeté sur le plan, l'arête ou le coin associé. Cette nouvelle projection nous permet d'être certain que la géométrie des plans et des arêtes est respectée.
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 
 La seconde modification concerne l'estimation du coût de déplacement. Lorsque l'un des points fusionnés est intégralement entouré de facettes assignées à un plan, alors on estime que le coût du déplacement doit être nul. Si le coût n'est pas nul, alors on modifie ce coût à un coût infini. Cela signifie que nous voulons que la simplification n'entraîne aucune perte de précision.
 
@@ -532,6 +585,7 @@ La figure~\ref{fig:simpl2} montre l'amélioration du maillage à l'aide de notre
 
 \section{Résultats}
 \subsection{Niveaux de simplification}
+<<<<<<< HEAD
 Notre algorithme de détection de plans est capable de fonctionner avec une tolérance fixe, mais peut aussi s'adapter à l'échantillonage du modèle. Différents niveaux de simplification sont ainsi envisageables.
 
 Les figures~\ref{fig:niv1} et~\ref{fig:niv2} illustrent les différents niveaux de simplification possibles pour un modèle.
@@ -568,6 +622,8 @@ La simplification automatique fonctionne autant avec un maillage géoréférenc�
 \caption{Quartier de Graz. À gauche, maillage original. À droite, maillage simplifié automatiquement.}
 \end{figure}
 
+=======
+>>>>>>> 208b27305c0340e4f56637c48f417878877f7e62
 \subsection{Temps d'éxécution}
 Le temps d'exécution total est assez variable d'un modèle à l'autre. Évidemment, plus un modèle est lourd, plus il va demander un temps de traitement conséquent. Mais ce n'est pas la seule raison. La taille du patch pour l'estimation de la courbure peut varier en fonction de la précision et l'échantillonage des zones. Un patch plus grand demandera plus de calcul. De même, un modèle avec beaucoup de plans va demander un temps de simplification plus important. Il y aura plus d'opérations d'\textit{edge collapse} à traiter, ce qui augmente le temps de calcul. Le tableau~\ref{table:vitesse} recense quelques temps de traitement et la vitesse moyenne. L'ordinateur utilisé pour les calculs est équipé avec un Intel Core i7 960 possédant 8 c\oe{}urs cadencés à 3.20 GHz et possédant 12 Go de mémoire RAM.
 
